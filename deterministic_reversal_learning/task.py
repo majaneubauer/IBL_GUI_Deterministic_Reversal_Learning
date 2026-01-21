@@ -4,8 +4,8 @@ from pathlib import Path
 import yaml
 
 from iblrig.base_choice_world import (
-    ActiveChoiceWorldSession,
-    ActiveChoiceWorldTrialData,
+    TrainingChoiceWorldSession,
+    TrainingChoiceWorldTrialData,
 )
 from iblrig.misc import get_task_arguments
 
@@ -16,11 +16,11 @@ with open(Path(__file__).parent.joinpath("task_parameters.yaml")) as f:
     DEFAULTS = yaml.safe_load(f)
 
 
-class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
+class DeterministicReversalLearningTrialData(TrainingChoiceWorldTrialData):
     pass
 
 
-class Session(ActiveChoiceWorldSession):
+class Session(TrainingChoiceWorldSession):
     protocol_name = "DeterministicReversalLearning"
     TrialDataModel = DeterministicReversalLearningTrialData
     # TODO: Implementation
