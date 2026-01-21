@@ -1,0 +1,11 @@
+[project]
+name = "deterministic-reversal-learning"
+version = "0.1.0"
+description = ""
+dependencies = []
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.entry-points."iblrig.plugins"]
+task_drl = "deterministic_reversal_learning.task:Session"
