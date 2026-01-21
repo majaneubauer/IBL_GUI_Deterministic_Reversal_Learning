@@ -23,7 +23,10 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
 class Session(ActiveChoiceWorldSession):
     protocol_name = "DeterministicReversalLearning"
     TrialDataModel = DeterministicReversalLearningTrialData
-    # TODO: Implementation
+
+    def next_trial(self):
+        self.trial_num += 1
+        self.draw_next_trial_info(pleft=self.task_params.PROBABILITY_LEFT)
 
 
 if __name__ == "__main__":  # pragma: no cover
