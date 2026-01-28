@@ -87,7 +87,7 @@ class Session(ActiveChoiceWorldSession):
             state_name="interactive_delay",
             state_timer=self.task_params.INTERACTIVE_DELAY,
             output_actions=[],
-            state_change_conditions={"Tup": "play_tone"},
+            state_change_conditions={"Tup": "play_instructive_tone"},
         )
 
         # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
@@ -95,7 +95,7 @@ class Session(ActiveChoiceWorldSession):
             state_name="play_instructive_tone",
             state_timer=0.1,
             output_actions=[
-                self.bpod.actions.play_instructive_tone
+                self.bpod.actions.play_tone
             ],  # TODO create instructive tone?
             state_change_conditions={
                 "Tup": "open_loop",
@@ -115,7 +115,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_go_tone],  # create/modify (go)_tone?
+            output_actions=[self.bpod.actions.play_tone],  # create/modify (go)_tone?
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
