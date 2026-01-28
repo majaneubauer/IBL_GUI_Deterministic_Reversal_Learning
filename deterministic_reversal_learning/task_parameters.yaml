@@ -2,8 +2,9 @@
 'ADAPTIVE_REWARD': false
 'BONSAI_EDITOR': false
 'CALIBRATION_VALUE': 0.067
-'CONTRAST_SET': [1.0, 0.25, 0.125, 0.0625, 0.0]
+'CONTRAST_SET': [1.0]
 'CONTRAST_SET_PROBABILITY_TYPE': uniform  # uniform or skew_zero: uniform makes the 0 contrast as likely as the others, while skew_zero makes it half as likely as other contrasts
+'DECICSON_PERIOD_SECS': 1
 'GO_TONE_AMPLITUDE': 0.0272
 'GO_TONE_DURATION': 0.11
 'GO_TONE_IDX': 2
@@ -20,7 +21,7 @@
 'QUIESCENT_PERIOD': 0.2
 'RECORD_AMBIENT_SENSOR_DATA': true
 'RECORD_SOUND': true
-'RESPONSE_WINDOW': 60
+'RESPONSE_WINDOW': 5
 'REWARD_AMOUNT_UL': 1.5
 'REWARD_TYPE': Water 10% Sucrose
 'STIM_ANGLE': 0.0

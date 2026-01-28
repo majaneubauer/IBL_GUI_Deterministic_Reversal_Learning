@@ -36,10 +36,10 @@ class Session(ActiveChoiceWorldSession):
 
         # Signal trial start and stop all sounds
         sma.add_state(
-            state_name='trial_start',
+            state_name="trial_start",
             state_timer=0,  # ~100µs hardware irreducible delay
-            state_change_conditions={'Tup': 'reset_rotary_encoder'},
-            output_actions=[self.bpod.actions.stop_sound, ('BNC1', 255)],
+            state_change_conditions={"Tup": "reset_rotary_encoder"},
+            output_actions=[self.bpod.actions.stop_sound, ("BNC1", 255)],
         )
 
         # Reset the rotary encoder by sending the following opcodes via the modules serial interface
@@ -47,22 +47,22 @@ class Session(ActiveChoiceWorldSession):
         # - 'E' (ASCII 69): Enable all position thresholds (that may have been disabled by a threshold-crossing)
         # cf. https://sanworks.github.io/Bpod_Wiki/serial-interfaces/rotary-encoder-module-serial-interface/
         sma.add_state(
-            state_name='reset_rotary_encoder',
+            state_name="reset_rotary_encoder",
             state_timer=0,
             output_actions=[self.bpod.actions.rotary_encoder_reset],
-            state_change_conditions={'Tup': 'quiescent_period'},
+            state_change_conditions={"Tup": "quiescent_period"},
         )
 
         # Quiescent Period. If the wheel is moved past one of the thresholds: Reset the rotary encoder and start over.
         # Continue with the stimulation once the quiescent period has passed without triggering movement thresholds.
         sma.add_state(
-            state_name='quiescent_period',
-            state_timer=self.quiescent_period,
+            state_name="quiescent_period",
+            state_timer=self.quiescent_period,  # TODO why is that here not self.tasks_params?
             output_actions=[],
             state_change_conditions={
-                'Tup': 'stim_on',
-                self.movement_left: 'reset_rotary_encoder',
-                self.movement_right: 'reset_rotary_encoder',
+                "Tup": "stim_on",
+                self.movement_left: "reset_rotary_encoder",
+                self.movement_right: "reset_rotary_encoder",
             },
         )
 
@@ -70,34 +70,64 @@ class Session(ActiveChoiceWorldSession):
         # Encoder Module's ongoing USB-stream. Move to the next state once the Frame2TTL has been triggered, i.e.,
         # when the stimulus has been rendered on screen. Use the state-timer as a backup to prevent a stall.
         sma.add_state(
-            state_name='stim_on',
+            state_name="stim_on",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.bonsai_show_stim],
-            state_change_conditions={'BNC1High': 'interactive_delay', 'BNC1Low': 'interactive_delay', 'Tup': 'interactive_delay'},
+            output_actions=[
+                self.bpod.actions.bonsai_show_stim
+            ],  # TODO change to show in centre
+            state_change_conditions={
+                "BNC1High": "interactive_delay",
+                "BNC1Low": "interactive_delay",
+                "Tup": "interactive_delay",
+            },
         )
 
         # Defined delay between visual and auditory cue
         sma.add_state(
-            state_name='interactive_delay',
+            state_name="interactive_delay",
             state_timer=self.task_params.INTERACTIVE_DELAY,
             output_actions=[],
-            state_change_conditions={'Tup': 'play_tone'},
+            state_change_conditions={"Tup": "play_tone"},
         )
 
-        # Play tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
+        # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
         sma.add_state(
-            state_name='play_tone',
+            state_name="play_instructive_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_tone],
-            state_change_conditions={'Tup': 'reset2_rotary_encoder', 'BNC2High': 'reset2_rotary_encoder'},
+            output_actions=[
+                self.bpod.actions.play_instructive_tone
+            ],  # TODO create instructive tone?
+            state_change_conditions={
+                "Tup": "open_loop",
+                "BNC2High": "open_loop",
+            },
+        )
+
+        # Start the open loop state in which the animal can move the wheel but wheel movement is not coupled to the stimulus position.
+        sma.add_state(
+            state_name="open_loop",
+            state_timer=self.task_params.DECISION_PERIOD_SECS,
+            output_actions=[],
+            state_change_conditions={"Tup": "play_go_tone"},
+        )
+
+        # Play go tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
+        sma.add_state(
+            state_name="play_go_tone",
+            state_timer=0.1,
+            output_actions=[self.bpod.actions.play_go_tone],  # create/modify (go)_tone?
+            state_change_conditions={
+                "Tup": "reset2_rotary_encoder",
+                "BNC2High": "reset2_rotary_encoder",
+            },
         )
 
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
-            state_name='reset2_rotary_encoder',
+            state_name="reset2_rotary_encoder",
             state_timer=0.05,
             output_actions=[self.bpod.actions.rotary_encoder_reset],
-            state_change_conditions={'Tup': 'closed_loop'},
+            state_change_conditions={"Tup": "closed_loop"},
         )
 
         # Start the closed loop state in which the animal controls the position of the visual stimulus by means of the
@@ -107,72 +137,86 @@ class Session(ActiveChoiceWorldSession):
         # 3) wheel has been moved in CORRECT direction: continue with reward condition
 
         sma.add_state(
-            state_name='closed_loop',
+            state_name="closed_loop",
             state_timer=self.task_params.RESPONSE_WINDOW,
-            output_actions=[self.bpod.actions.bonsai_closed_loop],
-            state_change_conditions={'Tup': 'no_go', self.event_error: 'freeze_error', self.event_reward: 'freeze_reward'},
+            output_actions=[
+                self.bpod.actions.bonsai_closed_loop
+            ],  # TODO change bonsai closed loop meaning?
+            state_change_conditions={
+                "Tup": "no_go",
+                self.event_error: "freeze_error",
+                self.event_reward: "freeze_reward",
+            },
         )
 
         # No-go: hide the visual stimulus and play white noise. Go to exit_state after FEEDBACK_NOGO_DELAY_SECS.
         sma.add_state(
-            state_name='no_go',
-            state_timer=self.feedback_nogo_delay,
-            output_actions=[self.bpod.actions.bonsai_hide_stim, self.bpod.actions.play_noise],
-            state_change_conditions={'Tup': 'exit_state'},
+            state_name="no_go",
+            state_timer=self.feedback_nogo_delay,  # TODO why is that here not self.tasks_params?
+            output_actions=[
+                self.bpod.actions.bonsai_hide_stim,
+                self.bpod.actions.play_noise,
+            ],
+            state_change_conditions={"Tup": "exit_state"},
         )
 
         # Error: Freeze the stimulus and play white noise.
         # Continue to hide_stim/exit_state once FEEDBACK_ERROR_DELAY_SECS have passed.
         sma.add_state(
-            state_name='freeze_error',
+            state_name="freeze_error",
             state_timer=0,
             output_actions=[self.bpod.actions.bonsai_freeze_stim],
-            state_change_conditions={'Tup': 'error'},
+            state_change_conditions={"Tup": "error"},
         )
         sma.add_state(
-            state_name='error',
+            state_name="error",
             state_timer=self.feedback_error_delay,
             output_actions=[self.bpod.actions.play_noise],
-            state_change_conditions={'Tup': 'hide_stim'},
+            state_change_conditions={"Tup": "hide_stim"},
         )
 
-        # Reward: open the valve for a defined duration (and set BNC1 to high), freeze stimulus in center of screen.
+        # Reward: open the valve for a defined duration (and set BNC1 to high), freeze stimulus (freeze_reward same as
+        # freeze_error but #TODO how to differentiate which state to go to when Tup?).
         # Continue to hide_stim/exit_state once FEEDBACK_CORRECT_DELAY_SECS have passed.
         sma.add_state(
-            state_name='freeze_reward',
+            state_name="freeze_reward",
             state_timer=0,
-            output_actions=[self.bpod.actions.bonsai_freeze_center],
-            state_change_conditions={'Tup': 'reward'},
+            output_actions=[self.bpod.actions.bonsai_freeze_stim],
+            state_change_conditions={"Tup": "reward"},
         )
         sma.add_state(
-            state_name='reward',
+            state_name="reward",
             state_timer=self.reward_time,
-            output_actions=[('Valve1', 255), ('BNC1', 255)],
-            state_change_conditions={'Tup': 'correct'},
+            output_actions=[("Valve1", 255), ("BNC1", 255)],
+            state_change_conditions={"Tup": "correct"},
         )
         sma.add_state(
-            state_name='correct',
+            state_name="correct",
             state_timer=self.feedback_correct_delay - self.reward_time,
             output_actions=[],
-            state_change_conditions={'Tup': 'hide_stim'},
+            state_change_conditions={"Tup": "hide_stim"},
         )
 
         # Hide the visual stimulus. This is achieved by sending a time-stamped byte-message to Bonsai via the Rotary
         # Encoder Module's ongoing USB-stream. Move to the next state once the Frame2TTL has been triggered, i.e.,
         # when the stimulus has been rendered on screen. Use the state-timer as a backup to prevent a stall.
         sma.add_state(
-            state_name='hide_stim',
+            state_name="hide_stim",
             state_timer=0.1,
             output_actions=[self.bpod.actions.bonsai_hide_stim],
-            state_change_conditions={'Tup': 'exit_state', 'BNC1High': 'exit_state', 'BNC1Low': 'exit_state'},
+            state_change_conditions={
+                "Tup": "exit_state",
+                "BNC1High": "exit_state",
+                "BNC1Low": "exit_state",
+            },
         )
 
         # Wait for ITI_DELAY_SECS before ending the trial. Raise BNC1 to mark this event.
         sma.add_state(
-            state_name='exit_state',
+            state_name="exit_state",
             state_timer=self.task_params.ITI_DELAY_SECS,
-            output_actions=[('BNC1', 255)],
-            state_change_conditions={'Tup': 'exit'},
+            output_actions=[("BNC1", 255)],
+            state_change_conditions={"Tup": "exit"},
         )
 
         return sma
@@ -195,15 +239,24 @@ class Session(ActiveChoiceWorldSession):
         """
         softcode_dict = OrderedDict(
             {
-                SOFTCODE.STOP_SOUND: self.sound['sd'].stop,
-                SOFTCODE.PLAY_TONE: lambda: self.sound['sd'].play(self.sound['GO_TONE'], self.sound['samplerate']),
-                SOFTCODE.PLAY_NOISE: lambda: self.sound['sd'].play(self.sound['WHITE_NOISE'], self.sound['samplerate']),
+                SOFTCODE.STOP_SOUND: self.sound["sd"].stop,
+                SOFTCODE.PLAY_TONE: lambda: self.sound["sd"].play(
+                    self.sound["GO_TONE"], self.sound["samplerate"]
+                ),
+                SOFTCODE.PLAY_NOISE: lambda: self.sound["sd"].play(
+                    self.sound["WHITE_NOISE"], self.sound["samplerate"]
+                ),
                 SOFTCODE.TRIGGER_CAMERA: getattr(
-                    self, 'trigger_bonsai_cameras', lambda: self._raise_on_undefined_softcode_handler(SOFTCODE.TRIGGER_CAMERA)
+                    self,
+                    "trigger_bonsai_cameras",
+                    lambda: self._raise_on_undefined_softcode_handler(
+                        SOFTCODE.TRIGGER_CAMERA
+                    ),
                 ),
             }
         )
         return softcode_dict
+
 
 if __name__ == "__main__":  # pragma: no cover
     kwargs = get_task_arguments(parents=[Session.extra_parser()])
