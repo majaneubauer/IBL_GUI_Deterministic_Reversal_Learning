@@ -2,14 +2,8 @@ import logging
 from pathlib import Path
 import yaml
 import iblrig
-from collections import OrderedDict
-from collections.abc import Callable
 from enum import IntEnum
-from pybpodapi.bpod_modules.bpod_module import BpodModule
-from pybpodapi.com.messaging.trial import Trial
-from iblutil.io import binary, jsonable
-from iblutil.util import Bunch
-import numpy as np
+from iblrig.hifi import HiFi
 
 from iblrig.base_choice_world import (
     ActiveChoiceWorldSession,
@@ -43,6 +37,49 @@ SOFTCODE = IntEnum(
 class Session(ActiveChoiceWorldSession):
     protocol_name = "DeterministicReversalLearning"
     TrialDataModel = DeterministicReversalLearningTrialData
+
+    def init_mixin_sound(self, *args, **kwargs):
+        # 1) let the base class create GO_TONE, WHITE_NOISE, device, etc.
+        super().init_mixin_sound(*args, **kwargs)
+
+        # 2) define your new sound
+        self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
+            rate=self.sound["samplerate"],
+            frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
+            duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
+            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE,
+            fade=0.01,
+            chans=self.sound["channels"],
+        )
+
+    def start_mixin_sound(self, *args, **kwargs):
+        super().start_mixin_sound(*args, **kwargs)
+
+        # example: load into HiFi manually
+        if self.hardware_settings.device_sound["OUTPUT"] == "hifi":
+            hifi = HiFi(
+                port=self.hardware_settings.device_sound.COM_SOUND,
+                sampling_rate_hz=self.sound["samplerate"],
+            )
+            hifi.load(
+                index=self.task_params.INSTRUCTIVE_TONE_IDX,
+                data=self.sound.INSTRUCTIVE_TONE,
+            )
+            hifi.push()
+            hifi.close()
+
+    def sound_play_instructive_tone(
+        self, state_timer=0.102, state_name="play_instructive_tone"
+    ):
+        """
+        Play the ready tone beep using bpod state machine.
+        :return: bpod current trial export
+        """
+        return self._sound_play(
+            state_name=state_name,
+            output_actions=[self.bpod.actions.play_tone],
+            state_timer=state_timer,
+        )
 
     def next_trial(self):
         self.trial_num += 1
@@ -238,94 +275,6 @@ class Session(ActiveChoiceWorldSession):
         )
 
         return sma
-
-    def define_harp_sounds_actions(
-        self,
-        module: BpodModule,
-        go_tone_index: int = 2,
-        noise_index: int = 3,
-        instructive_tone_index: int = 4,
-    ) -> None:
-        module_port = f'Serial{module.serial_port if module is not None else ""}'
-
-        self.bpod.actions.update(
-            {
-                "play_tone": (
-                    module_port,
-                    self._define_message(module, [ord("P"), go_tone_index]),
-                ),
-                "play_noise": (
-                    module_port,
-                    self._define_message(module, [ord("P"), noise_index]),
-                ),
-                "play_instructive_tone": (
-                    module_port,
-                    self._define_message(module, [ord("P"), instructive_tone_index]),
-                ),
-                "stop_sound": (module_port, ord("X")),
-            }
-        )
-
-
-    def softcode_dictionary(self) -> OrderedDict[int, Callable]:
-        """
-        Returns a softcode handler dict where each key corresponds to the softcode and each value to the
-        function to be called.
-
-        This needs to be wrapped this way because
-            1) we want to be able to inherit this and dynamically add softcode to the dictionry
-            2) we need to provide the Task object (self) at run time to have the functions with static args
-        This is tricky as it is unclear if the task object is a copy or a reference when passed here.
-
-
-        Returns
-        -------
-        OrderedDict[int, Callable]
-            Softcode dictionary
-        """
-        softcode_dict = OrderedDict(
-            {
-                SOFTCODE.STOP_SOUND: self.sound["sd"].stop,
-                SOFTCODE.PLAY_TONE: lambda: self.sound["sd"].play(
-                    self.sound["GO_TONE"], self.sound["samplerate"]
-                ),
-                SOFTCODE.PLAY_INSTRUCTIVE_TONE: lambda: self.sound["sd"].play(
-                    self.sound["INSTRUCTIVE_TONE"], self.sound["samplerate"]
-                ),
-                SOFTCODE.PLAY_NOISE: lambda: self.sound["sd"].play(
-                    self.sound["WHITE_NOISE"], self.sound["samplerate"]
-                ),
-                SOFTCODE.TRIGGER_CAMERA: getattr(
-                    self,
-                    "trigger_bonsai_cameras",
-                    lambda: self._raise_on_undefined_softcode_handler(
-                        SOFTCODE.TRIGGER_CAMERA
-                    ),
-                ),
-            }
-        )
-        return softcode_dict
-
-    def init_mixin_sound(self, *args, **kwargs):
-        # 1) let the base class create GO_TONE, WHITE_NOISE, device, etc.
-        super().init_mixin_sound(*args, **kwargs)
-
-        # 2) define your new sound
-        self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
-            rate=self.sound["samplerate"],
-            frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
-            duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
-            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE,
-            fade=0.01,
-            chans=self.sound["channels"],
-        )
-
-    def sound_play_instructive_tone(self, state_timer=0.102, state_name='play_instructive_tone'):
-        """
-        Play the ready tone beep using bpod state machine.
-        :return: bpod current trial export
-        """
-        return self._sound_play(state_name=state_name, output_actions=[self.bpod.actions.play_tone], state_timer=state_timer)
 
 
 if __name__ == "__main__":  # pragma: no cover
