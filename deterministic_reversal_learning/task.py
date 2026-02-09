@@ -1,9 +1,11 @@
 import logging
 from pathlib import Path
+import yaml
+import iblrig
 from collections import OrderedDict
 from collections.abc import Callable
-from iblrig.hardware import SOFTCODE
-import yaml
+from enum import IntEnum
+from pybpodapi.bpod_modules.bpod_module import BpodModule
 
 from iblrig.base_choice_world import (
     ActiveChoiceWorldSession,
@@ -20,6 +22,18 @@ with open(Path(__file__).parent.joinpath("task_parameters.yaml")) as f:
 
 class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     pass
+
+
+SOFTCODE = IntEnum(
+    "SOFTCODE",
+    [
+        "STOP_SOUND",
+        "PLAY_TONE",
+        "PLAY_NOISE",
+        "PLAY_INSTRUCTIVE_TONE",
+        "TRIGGER_CAMERA",
+    ],
+)
 
 
 class Session(ActiveChoiceWorldSession):
@@ -95,7 +109,7 @@ class Session(ActiveChoiceWorldSession):
             state_name="play_instructive_tone",
             state_timer=0.1,
             output_actions=[
-                self.bpod.actions.play_tone
+                self.bpod.actions.play_instructive_tone
             ],  # TODO create instructive tone?
             state_change_conditions={
                 "Tup": "open_loop",
@@ -221,6 +235,32 @@ class Session(ActiveChoiceWorldSession):
 
         return sma
 
+    def define_harp_sounds_actions(
+        self,
+        module: BpodModule,
+        go_tone_index: int = 2,
+        noise_index: int = 3,
+        instructive_tone_index: int = 4,
+    ) -> None:
+        module_port = f'Serial{module.serial_port if module is not None else ""}'
+        self.actions.update(
+            {
+                "play_tone": (
+                    module_port,
+                    self._define_message(module, [ord("P"), go_tone_index]),
+                ),
+                "play_noise": (
+                    module_port,
+                    self._define_message(module, [ord("P"), noise_index]),
+                ),
+                "play_instructive_tone": (
+                    module_port,
+                    self._define_message(module, [ord("P"), instructive_tone_index]),
+                ),
+                "stop_sound": (module_port, ord("X")),
+            }
+        )
+
     def softcode_dictionary(self) -> OrderedDict[int, Callable]:
         """
         Returns a softcode handler dict where each key corresponds to the softcode and each value to the
@@ -243,6 +283,9 @@ class Session(ActiveChoiceWorldSession):
                 SOFTCODE.PLAY_TONE: lambda: self.sound["sd"].play(
                     self.sound["GO_TONE"], self.sound["samplerate"]
                 ),
+                SOFTCODE.PLAY_INSTRUCTIVE_TONE: lambda: self.sound["sd"].play(
+                    self.sound["INSTRUCTIVE_TONE"], self.sound["samplerate"]
+                ),
                 SOFTCODE.PLAY_NOISE: lambda: self.sound["sd"].play(
                     self.sound["WHITE_NOISE"], self.sound["samplerate"]
                 ),
@@ -256,6 +299,20 @@ class Session(ActiveChoiceWorldSession):
             }
         )
         return softcode_dict
+
+    def init_mixin_sound(self, *args, **kwargs):
+        # 1) let the base class create GO_TONE, WHITE_NOISE, device, etc.
+        super().init_mixin_sound(*args, **kwargs)
+
+        # 2) define your new sound
+        self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
+            rate=self.sound["samplerate"],
+            frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
+            duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
+            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE,
+            fade=0.01,
+            chans=self.sound["channels"],
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover
