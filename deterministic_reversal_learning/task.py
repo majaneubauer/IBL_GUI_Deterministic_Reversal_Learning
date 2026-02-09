@@ -4,6 +4,8 @@ import yaml
 import iblrig
 from enum import IntEnum
 from iblrig.hifi import HiFi
+from iblrig import sound
+from pybpodapi.bpod_modules.bpod_module import BpodModule
 
 from iblrig.base_choice_world import (
     ActiveChoiceWorldSession,
@@ -26,7 +28,7 @@ SOFTCODE = IntEnum(
     "SOFTCODE",
     [
         "STOP_SOUND",
-        "PLAY_TONE",
+        "PLAY_GO_TONE",
         "PLAY_NOISE",
         "PLAY_INSTRUCTIVE_TONE",
         "TRIGGER_CAMERA",
@@ -37,6 +39,17 @@ SOFTCODE = IntEnum(
 class Session(ActiveChoiceWorldSession):
     protocol_name = "DeterministicReversalLearning"
     TrialDataModel = DeterministicReversalLearningTrialData
+
+    def define_harp_sounds_actions(self, module: BpodModule, go_tone_index: int = 2, noise_index: int = 3, instructive_tone_index: int = 4) -> None:
+        module_port = f'Serial{module.serial_port if module is not None else ""}'
+        self.actions.update(
+            {
+                'play_tone': (module_port, self._define_message(module, [ord('P'), go_tone_index])),
+                'play_noise': (module_port, self._define_message(module, [ord('P'), noise_index])),
+                'play_instructive_tone': (module_port, self._define_message(module, [ord('P'), instructive_tone_index])),
+                'stop_sound': (module_port, ord('X')),
+            }
+        )
 
     def init_mixin_sound(self, *args, **kwargs):
         # 1) let the base class create GO_TONE, WHITE_NOISE, device, etc.
@@ -52,21 +65,56 @@ class Session(ActiveChoiceWorldSession):
             chans=self.sound["channels"],
         )
 
-    def start_mixin_sound(self, *args, **kwargs):
-        super().start_mixin_sound(*args, **kwargs)
+    def start_mixin_sound(self):
+        """
+        Depends on bpod mixin start for hard sound card
+        :return:
+        """
+        assert self.bpod.is_connected, 'The sound mixin depends on the bpod mixin being connected'
+        # SoundCard config params
+        match self.hardware_settings.device_sound['OUTPUT']:
+            case 'harp':
+                assert self.bpod.sound_card is not None, 'No harp sound-card connected to Bpod'
+                sound.configure_sound_card(
+                    sounds=[self.sound.GO_TONE, self.sound.WHITE_NOISE],
+                    indexes=[self.task_params.GO_TONE_IDX, self.task_params.WHITE_NOISE_IDX],
+                    sample_rate=self.sound['samplerate'],
+                )
+                self.bpod.define_harp_sounds_actions(
+                    module=self.bpod.sound_card,
+                    go_tone_index=self.task_params.GO_TONE_IDX,
+                    noise_index=self.task_params.WHITE_NOISE_IDX,
+                )
+            case 'hifi':
+                module = self.bpod.get_module('^HiFi')
+                assert module is not None, 'No HiFi module connected to Bpod'
+                assert self.hardware_settings.device_sound.COM_SOUND is not None
+                hifi = HiFi(port=self.hardware_settings.device_sound.COM_SOUND, sampling_rate_hz=self.sound['samplerate'])
+                hifi.load(index=self.task_params.GO_TONE_IDX, data=self.sound.GO_TONE)
+                hifi.load(index=self.task_params.INSTRUCTIVE_TONE_IDX, data=self.sound.INSTRUCTIVE_TONE)
+                hifi.load(index=self.task_params.WHITE_NOISE_IDX, data=self.sound.WHITE_NOISE)
+                hifi.push()
+                hifi.close()
+                self.bpod.define_harp_sounds_actions(
+                    module=module,
+                    go_tone_index=self.task_params.GO_TONE_IDX,
+                    noise_index=self.task_params.WHITE_NOISE_IDX,
+                    instructive_tone_index=self.task_params.INSTRUCTIVE_TONE_IDX,
+                )
+            case _:
+                self.bpod.define_xonar_sounds_actions()
+        log.info(f'Sound module loaded: OK: {self.hardware_settings.device_sound["OUTPUT"]}')
 
-        # example: load into HiFi manually
-        if self.hardware_settings.device_sound["OUTPUT"] == "hifi":
-            hifi = HiFi(
-                port=self.hardware_settings.device_sound.COM_SOUND,
-                sampling_rate_hz=self.sound["samplerate"],
-            )
-            hifi.load(
-                index=self.task_params.INSTRUCTIVE_TONE_IDX,
-                data=self.sound.INSTRUCTIVE_TONE,
-            )
-            hifi.push()
-            hifi.close()
+    def softcode_handler(self, softcode):
+        if softcode == SOFTCODE.PLAY_GO_TONE:
+            self.sound_device.play(self.task_params.GO_TONE_IDX)
+
+        elif softcode == SOFTCODE.PLAY_INSTRUCTIVE_TONE:
+            self.sound_device.play(self.task_params.INSTRUCTIVE_TONE_IDX)
+
+        else:
+            super().softcode_handler(softcode)
+
 
     def sound_play_instructive_tone(
         self, state_timer=0.102, state_name="play_instructive_tone"
@@ -77,7 +125,7 @@ class Session(ActiveChoiceWorldSession):
         """
         return self._sound_play(
             state_name=state_name,
-            output_actions=[self.bpod.actions.play_tone],
+            output_actions=[self.bpod.actions.play_instructive_tone],
             state_timer=state_timer,
         )
 
@@ -149,9 +197,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="play_instructive_tone",
             state_timer=0.1,
-            output_actions=[
-                self.bpod.actions.play_instructive_tone
-            ],  # TODO create instructive tone?
+            output_actions=[self.bpod.actions.play_instructive_tone],  # TODO create instructive tone?
             state_change_conditions={
                 "Tup": "open_loop",
                 "BNC2High": "open_loop",
@@ -170,7 +216,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_tone],  # create/modify (go)_tone?
+            output_actions=[self.bpod.actions.play_tone],  # TODO create/modify (go)_tone?
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
