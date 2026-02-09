@@ -6,6 +6,10 @@ from collections import OrderedDict
 from collections.abc import Callable
 from enum import IntEnum
 from pybpodapi.bpod_modules.bpod_module import BpodModule
+from pybpodapi.com.messaging.trial import Trial
+from iblutil.io import binary, jsonable
+from iblutil.util import Bunch
+import numpy as np
 
 from iblrig.base_choice_world import (
     ActiveChoiceWorldSession,
@@ -243,7 +247,8 @@ class Session(ActiveChoiceWorldSession):
         instructive_tone_index: int = 4,
     ) -> None:
         module_port = f'Serial{module.serial_port if module is not None else ""}'
-        self.actions.update(
+
+        self.bpod.actions.update(
             {
                 "play_tone": (
                     module_port,
@@ -260,6 +265,7 @@ class Session(ActiveChoiceWorldSession):
                 "stop_sound": (module_port, ord("X")),
             }
         )
+
 
     def softcode_dictionary(self) -> OrderedDict[int, Callable]:
         """
@@ -313,6 +319,13 @@ class Session(ActiveChoiceWorldSession):
             fade=0.01,
             chans=self.sound["channels"],
         )
+
+    def sound_play_instructive_tone(self, state_timer=0.102, state_name='play_instructive_tone'):
+        """
+        Play the ready tone beep using bpod state machine.
+        :return: bpod current trial export
+        """
+        return self._sound_play(state_name=state_name, output_actions=[self.bpod.actions.play_tone], state_timer=state_timer)
 
 
 if __name__ == "__main__":  # pragma: no cover
