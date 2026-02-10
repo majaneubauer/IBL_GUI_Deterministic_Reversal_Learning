@@ -31,13 +31,20 @@ class Session(ActiveChoiceWorldSession):
     TrialDataModel = DeterministicReversalLearningTrialData
 
     def init_mixin_sound(self):
+        # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
         super().init_mixin_sound()
-
+        # determine the amp_gain_factor like it is done in the original method
+        if self.hardware_settings.device_sound.OUTPUT == 'hifi' and self.hardware_settings.device_sound.AMP_TYPE == 'AMP2X15':
+            amp_gain_factor = 0.25
+        else:
+            amp_gain_factor = 1.0
+        self.task_params.INSTRUCTIVE_TONE_AMPLITUDE *= amp_gain_factor # TODO is this a bug, or intentional?
+        # create instructive sound
         self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
             rate=self.sound["samplerate"],
             frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
             duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
-            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE,
+            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE * amp_gain_factor, # TODO is this a bug, or intentional?
             fade=0.01,
             chans=self.sound["channels"],
         )
@@ -45,43 +52,13 @@ class Session(ActiveChoiceWorldSession):
     def start_mixin_sound(self):
         super().start_mixin_sound()
         output_type = self.hardware_settings.device_sound["OUTPUT"]
-
         match output_type:
-            case "harp":
-                assert (
-                    self.bpod.sound_card is not None
-                ), "No harp sound-card connected to Bpod"
-                sound.configure_sound_card(
-                    sounds=[self.sound.GO_TONE, self.sound.WHITE_NOISE],
-                    indexes=[
-                        self.task_params.GO_TONE_IDX,
-                        self.task_params.WHITE_NOISE_IDX,
-                    ],
-                    sample_rate=self.sound["samplerate"],
-                )
-                # Standard two tones
-                self.bpod.define_harp_sounds_actions(
-                    module=self.bpod.sound_card,
-                    go_tone_index=self.task_params.GO_TONE_IDX,
-                    noise_index=self.task_params.WHITE_NOISE_IDX,
-                )
-                # Add instructive tone manually
-                module_port = f"Serial{self.bpod.sound_card.serial_port}"
-                self.bpod.actions.play_instructive_tone = (
-                    module_port,
-                    self.bpod._define_message(
-                        self.bpod.sound_card,
-                        [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX],
-                    ),
-                )
-
             case "hifi":
                 module = self.bpod.get_module("^HiFi")
                 hifi = HiFi(
                     port=self.hardware_settings.device_sound.COM_SOUND,
                     sampling_rate_hz=self.sound["samplerate"],
                 )
-
                 # Load the three buffers
                 hifi.load(
                     index=self.task_params.GO_TONE_IDX, data=self.sound["GO_TONE"]
@@ -96,39 +73,20 @@ class Session(ActiveChoiceWorldSession):
                 )
                 hifi.push()
                 hifi.close()
-
-                # Standard two actions
+                # standard two actions
                 self.bpod.define_harp_sounds_actions(
                     module=module,
                     go_tone_index=self.task_params.GO_TONE_IDX,
                     noise_index=self.task_params.WHITE_NOISE_IDX,
                 )
                 # add instructive tone manually
+                module_port = f"Serial{module.serial_port}"
                 self.bpod.actions.play_instructive_tone = (
                     module_port,
                     self.bpod._define_message(
                         module, [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX]
                     ),
                 )
-
-                # # Correctly assign actions using the HiFi serial port
-                # module_port = f"Serial{module.serial_port}"
-                # self.bpod.actions.play_tone = (
-                #     module_port,
-                #     self.bpod._define_message(module, [ord("P"), self.task_params.GO_TONE_IDX])
-                # )
-                # self.bpod.actions.play_instructive_tone = (
-                #     module_port,
-                #     self.bpod._define_message(module, [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX])
-                # )
-                # self.bpod.actions.play_noise = (
-                #     module_port,
-                #     self.bpod._define_message(module, [ord("P"), self.task_params.WHITE_NOISE_IDX])
-                # )
-
-            case _:
-                self.bpod.define_xonar_sounds_actions()
-
         log.info(
             f"Sound module loaded: OK: {self.hardware_settings.device_sound['OUTPUT']}"
         )
