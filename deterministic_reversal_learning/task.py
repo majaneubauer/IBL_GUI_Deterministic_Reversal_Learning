@@ -26,10 +26,6 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     pass
 
 
-class TASK_SOFTCODE(enum.IntEnum):
-    PLAY_INSTRUCTIVE_TONE = max(sc.value for sc in BASE_SOFTCODE) + 1  # hardcode as 5
-
-
 class Session(ActiveChoiceWorldSession):
     protocol_name = "DeterministicReversalLearning"
     TrialDataModel = DeterministicReversalLearningTrialData
@@ -46,17 +42,26 @@ class Session(ActiveChoiceWorldSession):
             chans=self.sound["channels"],
         )
 
-    def softcode_dictionary(self):
-        softcode_dict = super().softcode_dictionary()
+    def start_mixin_sound(self):
+        super().start_mixin_sound()
 
-        softcode_dict[TASK_SOFTCODE.PLAY_INSTRUCTIVE_TONE] = lambda: self.sound[
-            "sd"
-        ].play(
-            self.sound["INSTRUCTIVE_TONE"],
-            self.sound["samplerate"],
-        )
-
-        return softcode_dict
+        match self.hardware_settings.device_sound["OUTPUT"]:
+            case "hifi":
+                module = self.bpod.get_module("^HiFi")
+                hifi = HiFi(
+                    port=self.hardware_settings.device_sound.COM_SOUND,
+                    sampling_rate_hz=self.sound["samplerate"],
+                )
+                hifi.load(
+                    index=self.task_params.INSTRUCTIVE_TONE_IDX,
+                    data=self.sound.INSTRUCTIVE_TONE,
+                )
+                hifi.push()
+                hifi.close()
+                self.bpod.define_harp_sounds_actions(
+                    module=module,
+                    instructive_tone_index=self.task_params.INSTRUCTIVE_TONE_IDX,
+                )
 
     def next_trial(self):
         self.trial_num += 1
@@ -127,7 +132,7 @@ class Session(ActiveChoiceWorldSession):
             state_name="play_instructive_tone",
             state_timer=0.1,
             output_actions=[
-                ("SoftCode", TASK_SOFTCODE.PLAY_INSTRUCTIVE_TONE)
+                self.bpod.actions.play_instructive_tone
             ],  # TODO create instructive tone?
             state_change_conditions={
                 "Tup": "open_loop",

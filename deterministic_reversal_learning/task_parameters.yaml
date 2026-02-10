@@ -14,8 +14,8 @@
 'FEEDBACK_NOGO_DELAY_SECS': 2
 'INSTRUCTIVE_TONE_AMPLITUDE': 0.0272
 'INSTRUCTIVE_TONE_DURATION': 0.11
-'INSTRUCTIVE_TONE_IDX': 4
-'INSTRUCTIVE_TONE_FREQUENCY': 1000
+'INSTRUCTIVE_TONE_IDX': 5
+'INSTRUCTIVE_TONE_FREQUENCY': 5000
 'INTERACTIVE_DELAY': 0.0
 'DEAD_TIME': 0.5  # the length of time before entering the next trial. This plus ITI_DELAY_SECS define period of closed-loop grey screen
 'ITI_DELAY_SECS': 0.5  # this is the length of the ITI state at the end of the session. 0.5 seconds are added to it until the next trial start
