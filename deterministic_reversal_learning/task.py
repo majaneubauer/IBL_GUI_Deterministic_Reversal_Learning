@@ -34,17 +34,23 @@ class Session(ActiveChoiceWorldSession):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
         super().init_mixin_sound()
         # determine the amp_gain_factor like it is done in the original method
-        if self.hardware_settings.device_sound.OUTPUT == 'hifi' and self.hardware_settings.device_sound.AMP_TYPE == 'AMP2X15':
+        if (
+            self.hardware_settings.device_sound.OUTPUT == "hifi"
+            and self.hardware_settings.device_sound.AMP_TYPE == "AMP2X15"
+        ):
             amp_gain_factor = 0.25
         else:
             amp_gain_factor = 1.0
-        self.task_params.INSTRUCTIVE_TONE_AMPLITUDE *= amp_gain_factor # TODO is this a bug, or intentional?
+        self.task_params.INSTRUCTIVE_TONE_AMPLITUDE *= (
+            amp_gain_factor  # TODO is this a bug, or intentional?
+        )
         # create instructive sound
         self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
             rate=self.sound["samplerate"],
             frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
             duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
-            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE * amp_gain_factor, # TODO is this a bug, or intentional?
+            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE
+            * amp_gain_factor,  # TODO is this a bug, or intentional?
             fade=0.01,
             chans=self.sound["channels"],
         )
@@ -81,12 +87,23 @@ class Session(ActiveChoiceWorldSession):
                 )
                 # add instructive tone manually
                 module_port = f"Serial{module.serial_port}"
-                self.bpod.actions.play_instructive_tone = (
-                    module_port,
-                    self.bpod._define_message(
-                        module, [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX]
-                    ),
+                self.bpod.actions.update(
+                    {
+                        "play_instructive_tone": (
+                            module_port,
+                            self._define_message(
+                                module,
+                                [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX],
+                            ),
+                        ),
+                    }
                 )
+                # self.bpod.actions.play_instructive_tone = (
+                #     module_port,
+                #     self.bpod._define_message(
+                #         module, [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX]
+                #     ),
+                # )
         log.info(
             f"Sound module loaded: OK: {self.hardware_settings.device_sound['OUTPUT']}"
         )
@@ -159,9 +176,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="play_instructive_tone",
             state_timer=0.1,
-            output_actions=[
-                self.bpod.actions.play_instructive_tone
-            ],  # TODO create instructive tone?
+            output_actions=[self.bpod.actions.play_instructive_tone],
             state_change_conditions={
                 "Tup": "open_loop",
                 "BNC2High": "open_loop",
@@ -180,9 +195,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[
-                self.bpod.actions.play_tone
-            ],  # TODO create/modify (go)_tone?
+            output_actions=[self.bpod.actions.play_tone],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
