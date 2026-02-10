@@ -91,19 +91,13 @@ class Session(ActiveChoiceWorldSession):
                     {
                         "play_instructive_tone": (
                             module_port,
-                            self._define_message(
+                            self.bpod._define_message(
                                 module,
                                 [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX],
                             ),
                         ),
                     }
                 )
-                # self.bpod.actions.play_instructive_tone = (
-                #     module_port,
-                #     self.bpod._define_message(
-                #         module, [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX]
-                #     ),
-                # )
         log.info(
             f"Sound module loaded: OK: {self.hardware_settings.device_sound['OUTPUT']}"
         )
