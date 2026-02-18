@@ -10,6 +10,7 @@ import enum
 from iblrig.hardware import SOFTCODE as BASE_SOFTCODE
 import numpy as np
 from re import split as re_split
+from iblrig.hardware import RotaryEncoderModule
 
 from iblrig.base_choice_world import (
     ChoiceWorldSession,
@@ -105,6 +106,24 @@ class Session(ActiveChoiceWorldSession):
             f"Sound module loaded: OK: {self.hardware_settings.device_sound['OUTPUT']}"
         )
 
+    def init_mixin_rotary_encoder(self):
+        thresholds_deg = self.task_params.STIM_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS + self.task_params.STIM_END_POSITIONS
+        self.device_rotary_encoder = RotaryEncoderModule(
+            self.hardware_settings.device_rotary_encoder, thresholds_deg, self.stimulus_gain
+        )
+
+    @property
+    def end_position(self):
+        return int(np.random.choice(self.task_params.STIM_END_POSITIONS, p=[1, 0]))
+
+    @property
+    def event_error(self):
+        return self.device_rotary_encoder.THRESHOLD_EVENTS[(-1 if self.task_params.STIM_REVERSE else 1) * self.end_position]
+
+    @property
+    def event_reward(self):
+        return self.device_rotary_encoder.THRESHOLD_EVENTS[(1 if self.task_params.STIM_REVERSE else -1) * self.end_position]
+
     def next_trial(self):
         self.trial_num += 1
         self.draw_next_trial_info(pleft=self.task_params.PROBABILITY_LEFT)
@@ -153,7 +172,7 @@ class Session(ActiveChoiceWorldSession):
             state_timer=0.1,
             output_actions=[
                 self.bpod.actions.bonsai_show_stim
-            ],  # TODO change to show in centre
+            ],
             state_change_conditions={
                 "BNC1High": "interactive_delay",
                 "BNC1Low": "interactive_delay",
