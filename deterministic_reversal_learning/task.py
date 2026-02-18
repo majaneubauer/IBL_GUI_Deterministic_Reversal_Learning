@@ -101,7 +101,7 @@ class Session(ActiveChoiceWorldSession):
         )
 
     def init_mixin_rotary_encoder(self):
-        thresholds_deg = self.task_params.STIM_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS + self.task_params.STIM_END_POSITIONS
+        thresholds_deg = self.task_params.STIM_END_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS # STIM_POSITIONS does not need to be in here
         self.device_rotary_encoder = RotaryEncoderModule(
             self.hardware_settings.device_rotary_encoder, thresholds_deg, self.stimulus_gain
         )
