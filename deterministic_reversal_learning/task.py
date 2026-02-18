@@ -8,8 +8,11 @@ from iblrig import sound
 from pybpodapi.bpod_modules.bpod_module import BpodModule
 import enum
 from iblrig.hardware import SOFTCODE as BASE_SOFTCODE
+import numpy as np
+from re import split as re_split
 
 from iblrig.base_choice_world import (
+    ChoiceWorldSession,
     ActiveChoiceWorldSession,
     ActiveChoiceWorldTrialData,
 )
@@ -294,6 +297,47 @@ class Session(ActiveChoiceWorldSession):
         )
 
         return sma
+    
+    def trial_completed(self, bpod_data: dict) -> None:
+        # removed assertion error for position = 0 cause that is what we want
+        # Get the response time from the behaviour data.
+        # It is defined as the time passing between the start of `stim_on` and the end of `closed_loop`.
+        state_times = bpod_data['States timestamps']
+        response_time = state_times['closed_loop'][0][1] - state_times['stim_on'][0][0]
+        self.trials_table.at[self.trial_num, 'response_time'] = response_time
+
+        try:
+            # Get the stimulus position
+            position = self.trials_table.at[self.trial_num, 'position']
+
+            # Get the trial's outcome, i.e., the states that have a matching name and a valid time-stamp
+            # Assert that we have exactly one outcome
+            outcome_names = ['correct', 'error', 'no_go', 'omit_correct', 'omit_error', 'omit_no_go']
+            outcomes = [name for name, times in state_times.items() if name in outcome_names and ~np.isnan(times[0][0])]
+            if (n_outcomes := len(outcomes)) != 1:
+                trial_states = 'Trial states: ' + ', '.join(k for k, v in state_times.items() if ~np.isnan(v[0][0]))
+                assert n_outcomes != 0, f'No outcome detected for trial {self.trial_num}.\n{trial_states}'
+                assert n_outcomes == 1, f'{n_outcomes} outcomes detected for trial {self.trial_num}.\n{trial_states}'
+            outcome = outcomes[0]
+
+        except AssertionError as e:
+            # write bpod_data to disk, log exception then raise
+            self.save_trial_data_to_json(bpod_data, validate=False)
+            for line in re_split(r'\n', e.args[0]):
+                log.error(line)
+            raise e
+
+        # record the trial's outcome in the trials_table
+        self.trials_table.at[self.trial_num, 'trial_correct'] = 'correct' in outcome
+        if 'correct' in outcome:
+            self.session_info.NTRIALS_CORRECT += 1
+            self.trials_table.at[self.trial_num, 'response_side'] = -np.sign(position)
+        elif 'error' in outcome:
+            self.trials_table.at[self.trial_num, 'response_side'] = np.sign(position)
+        elif 'no_go' in outcome:
+            self.trials_table.at[self.trial_num, 'response_side'] = 0
+
+        super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
 
 if __name__ == "__main__":  # pragma: no cover
