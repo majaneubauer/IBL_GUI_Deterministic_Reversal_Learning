@@ -2,18 +2,12 @@ import logging
 from pathlib import Path
 import yaml
 import iblrig
-from enum import IntEnum
 from iblrig.hifi import HiFi
-from iblrig import sound
-from pybpodapi.bpod_modules.bpod_module import BpodModule
-import enum
-from iblrig.hardware import SOFTCODE as BASE_SOFTCODE
 import numpy as np
 from re import split as re_split
 from iblrig.hardware import RotaryEncoderModule
 
 from iblrig.base_choice_world import (
-    ChoiceWorldSession,
     ActiveChoiceWorldSession,
     ActiveChoiceWorldTrialData,
 )
@@ -350,9 +344,9 @@ class Session(ActiveChoiceWorldSession):
         self.trials_table.at[self.trial_num, 'trial_correct'] = 'correct' in outcome
         if 'correct' in outcome:
             self.session_info.NTRIALS_CORRECT += 1
-            self.trials_table.at[self.trial_num, 'response_side'] = -np.sign(position)
+            self.trials_table.at[self.trial_num, 'response_side'] = -np.sign(self.end_position)
         elif 'error' in outcome:
-            self.trials_table.at[self.trial_num, 'response_side'] = np.sign(position)
+            self.trials_table.at[self.trial_num, 'response_side'] = np.sign(self.end_position)
         elif 'no_go' in outcome:
             self.trials_table.at[self.trial_num, 'response_side'] = 0
 
