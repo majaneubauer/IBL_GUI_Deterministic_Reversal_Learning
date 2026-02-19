@@ -8,14 +8,14 @@
 'GO_TONE_AMPLITUDE': 0.0272
 'GO_TONE_DURATION': 0.11
 'GO_TONE_IDX': 2
-'GO_TONE_FREQUENCY': 5000
+'GO_TONE_FREQUENCY': 5000 # 5 kHz
 'FEEDBACK_CORRECT_DELAY_SECS': 1
 'FEEDBACK_ERROR_DELAY_SECS': 2
 'FEEDBACK_NOGO_DELAY_SECS': 2
 'INSTRUCTIVE_TONE_AMPLITUDE': 0.0272
 'INSTRUCTIVE_TONE_DURATION': 0.11
 'INSTRUCTIVE_TONE_IDX': 5
-'INSTRUCTIVE_TONE_FREQUENCY': 10000
+'INSTRUCTIVE_TONE_FREQUENCY': 10000 # 10 kHz
 'INTERACTIVE_DELAY': 0.0
 'DEAD_TIME': 0.5  # the length of time before entering the next trial. This plus ITI_DELAY_SECS define period of closed-loop grey screen
 'ITI_DELAY_SECS': 0.5  # this is the length of the ITI state at the end of the session. 0.5 seconds are added to it until the next trial start
@@ -39,7 +39,7 @@
 'SYNC_SQUARE_X': 1.33
 'SYNC_SQUARE_Y': -1.03
 'USE_AUTOMATIC_STOPPING_CRITERIONS': true
-'VISUAL_STIMULUS': GaborIBLTask/Gabor2D.bonsai  # null / passiveChoiceWorld_passive.bonsai
+'VISUAL_STIMULUS': GaborIBLTask/Gabor2D_MN.bonsai # GaborIBLTask/Gabor2D.bonsai  # null / passiveChoiceWorld_passive.bonsai
 'WHITE_NOISE_AMPLITUDE': 0.05
 'WHITE_NOISE_DURATION': 0.5
 'WHITE_NOISE_IDX': 3
