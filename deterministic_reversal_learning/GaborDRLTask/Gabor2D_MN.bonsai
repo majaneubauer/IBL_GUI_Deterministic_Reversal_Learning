@@ -1379,7 +1379,7 @@ Value = whhel_radius for wheel_perim</Description>
                         <Expression xsi:type="WorkflowInput">
                           <Name>Source1</Name>
                         </Expression>
-                        <Expression xsi:type="GreaterThan">
+                        <Expression xsi:type="GreaterThanOrEqual">
                           <Operand xsi:type="FloatProperty">
                             <Value>35</Value>
                           </Operand>
