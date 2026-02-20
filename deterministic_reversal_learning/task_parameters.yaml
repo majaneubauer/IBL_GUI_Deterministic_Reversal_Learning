@@ -30,7 +30,7 @@
 'REWARD_TYPE': Water 10% Sucrose
 'STIM_ANGLE': 0.0
 'STIM_FREQ': 0.1
-'STIM_GAIN': 4.0  # wheel to stimulus relationship (degrees visual angle per mm of wheel displacement)
+'STIM_GAIN': 1.0  # wheel to stimulus relationship (degrees visual angle per mm of wheel displacement); REM v2 4x as accurate, thus 4/4=1
 'STIM_POSITIONS': [0, 0]
 'STIM_END_POSITIONS': [-35, 35]
 'STIM_SIGMA': 7.0
