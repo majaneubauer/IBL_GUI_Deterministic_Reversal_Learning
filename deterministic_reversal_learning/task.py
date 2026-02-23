@@ -4,6 +4,7 @@ import yaml
 import iblrig
 from iblrig.hifi import HiFi
 import numpy as np
+import pandas as pd
 from re import split as re_split
 from iblrig.hardware import RotaryEncoderModule
 
@@ -21,16 +22,28 @@ with open(Path(__file__).parent.joinpath("task_parameters.yaml")) as f:
 
 
 class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
-    pass
+    """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
+
+    correct_end_position: float  # -35.0 or +35.0
+    block_side: float  # -1 for left or +1 for right
 
 
 class Session(ActiveChoiceWorldSession):
-    protocol_name = "DeterministicReversalLearning"
+    protocol_name = (
+        "DeterministicReversalLearning"  # here defined how it shows up in GUI
+    )
     TrialDataModel = DeterministicReversalLearningTrialData
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.paths['VISUAL_STIM_FOLDER'] = self.get_task_directory()
+        # to help bonsai find Gabor2D_MN.bonsai file
+        self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory()
+        # add block state
+        self.block_side = (
+            -1
+        )  # start with left block (-1 = left, +1 = right) # TODO make this random!!
+        self.block_length = self.task_params.BLOCK_LENGTH
+        self.block_trial_counter = 0
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -105,26 +118,51 @@ class Session(ActiveChoiceWorldSession):
         )
 
     def init_mixin_rotary_encoder(self):
-        thresholds_deg = self.task_params.STIM_END_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS # STIM_POSITIONS does not need to be in here
+        thresholds_deg = (
+            self.task_params.STIM_END_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS
+        )  # STIM_POSITIONS does not need to be in here
         self.device_rotary_encoder = RotaryEncoderModule(
-            self.hardware_settings.device_rotary_encoder, thresholds_deg, self.stimulus_gain
+            self.hardware_settings.device_rotary_encoder,
+            thresholds_deg,
+            self.stimulus_gain,
         )
 
     @property
-    def end_position(self):
-        return int(np.random.choice(self.task_params.STIM_END_POSITIONS, p=[1, 0]))
+    def correct_end_position(self):
+        return int(
+            self.block_side * abs(self.task_params.STIM_END_POSITIONS[0])
+        )  # left block: -1 * |-35| = -35; right block: 1 * |-35| = 35
 
     @property
     def event_error(self):
-        return self.device_rotary_encoder.THRESHOLD_EVENTS[(-1 if self.task_params.STIM_REVERSE else 1) * self.end_position]
+        return self.device_rotary_encoder.THRESHOLD_EVENTS[
+            (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
+        ]
 
     @property
     def event_reward(self):
-        return self.device_rotary_encoder.THRESHOLD_EVENTS[(1 if self.task_params.STIM_REVERSE else -1) * self.end_position]
+        return self.device_rotary_encoder.THRESHOLD_EVENTS[
+            (1 if self.task_params.STIM_REVERSE else -1) * self.correct_end_position
+        ]
 
     def next_trial(self):
         self.trial_num += 1
-        self.draw_next_trial_info(pleft=self.task_params.PROBABILITY_LEFT)
+
+        # update block counter
+        self.block_trial_counter += 1
+
+        # deterministic reversal
+        if self.block_trial_counter >= self.block_length:
+            self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
+            self.block_trial_counter = 0
+            log.info(f"Reversal! New block side: {self.block_side}")
+
+        self.draw_next_trial_info(
+            pleft=self.task_params.PROBABILITY_LEFT
+        )  # no need to change anything here, because stimulus position is [0, 0]
+
+        # log block side
+        self.trials_table.at[self.trial_num, "block_side"] = self.block_side
 
     def get_state_machine_trial(self, i):
         # we define the trial number here for subclasses that may need it
@@ -168,9 +206,7 @@ class Session(ActiveChoiceWorldSession):
         sma.add_state(
             state_name="stim_on",
             state_timer=0.1,
-            output_actions=[
-                self.bpod.actions.bonsai_show_stim
-            ],
+            output_actions=[self.bpod.actions.bonsai_show_stim],
             state_change_conditions={
                 "BNC1High": "interactive_delay",
                 "BNC1Low": "interactive_delay",
@@ -314,45 +350,63 @@ class Session(ActiveChoiceWorldSession):
         )
 
         return sma
-    
+
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the start of `stim_on` and the end of `closed_loop`.
-        state_times = bpod_data['States timestamps']
-        response_time = state_times['closed_loop'][0][1] - state_times['stim_on'][0][0]
-        self.trials_table.at[self.trial_num, 'response_time'] = response_time
+        state_times = bpod_data["States timestamps"]
+        response_time = state_times["closed_loop"][0][1] - state_times["stim_on"][0][0]
+        self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
-            # Get the stimulus position
-            position = self.trials_table.at[self.trial_num, 'position']
-
             # Get the trial's outcome, i.e., the states that have a matching name and a valid time-stamp
             # Assert that we have exactly one outcome
-            outcome_names = ['correct', 'error', 'no_go', 'omit_correct', 'omit_error', 'omit_no_go']
-            outcomes = [name for name, times in state_times.items() if name in outcome_names and ~np.isnan(times[0][0])]
+            outcome_names = [
+                "correct",
+                "error",
+                "no_go",
+                "omit_correct",
+                "omit_error",
+                "omit_no_go",
+            ]
+            outcomes = [
+                name
+                for name, times in state_times.items()
+                if name in outcome_names and ~np.isnan(times[0][0])
+            ]
             if (n_outcomes := len(outcomes)) != 1:
-                trial_states = 'Trial states: ' + ', '.join(k for k, v in state_times.items() if ~np.isnan(v[0][0]))
-                assert n_outcomes != 0, f'No outcome detected for trial {self.trial_num}.\n{trial_states}'
-                assert n_outcomes == 1, f'{n_outcomes} outcomes detected for trial {self.trial_num}.\n{trial_states}'
+                trial_states = "Trial states: " + ", ".join(
+                    k for k, v in state_times.items() if ~np.isnan(v[0][0])
+                )
+                assert (
+                    n_outcomes != 0
+                ), f"No outcome detected for trial {self.trial_num}.\n{trial_states}"
+                assert (
+                    n_outcomes == 1
+                ), f"{n_outcomes} outcomes detected for trial {self.trial_num}.\n{trial_states}"
             outcome = outcomes[0]
 
         except AssertionError as e:
             # write bpod_data to disk, log exception then raise
             self.save_trial_data_to_json(bpod_data, validate=False)
-            for line in re_split(r'\n', e.args[0]):
+            for line in re_split(r"\n", e.args[0]):
                 log.error(line)
             raise e
 
         # record the trial's outcome in the trials_table
-        self.trials_table.at[self.trial_num, 'trial_correct'] = 'correct' in outcome
-        if 'correct' in outcome:
+        self.trials_table.at[self.trial_num, "trial_correct"] = "correct" in outcome
+        if "correct" in outcome:
             self.session_info.NTRIALS_CORRECT += 1
-            self.trials_table.at[self.trial_num, 'response_side'] = -np.sign(self.end_position)
-        elif 'error' in outcome:
-            self.trials_table.at[self.trial_num, 'response_side'] = np.sign(self.end_position)
-        elif 'no_go' in outcome:
-            self.trials_table.at[self.trial_num, 'response_side'] = 0
+            self.trials_table.at[self.trial_num, "response_side"] = np.sign(
+                self.correct_end_position
+            )
+        elif "error" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
+                self.correct_end_position
+            )
+        elif "no_go" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = 0
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
