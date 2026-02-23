@@ -6,6 +6,7 @@ from iblrig.hifi import HiFi
 import numpy as np
 from typing import Any
 from re import split as re_split
+from scipy.stats import beta
 from iblrig.hardware import RotaryEncoderModule
 
 from iblrig.base_choice_world import (
@@ -25,6 +26,10 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
     block_side: int  # -1 for left or +1 for right
+    alpha: float
+    beta: float
+    map_probability: float
+    precision: float
 
 
 class Session(ActiveChoiceWorldSession):
@@ -438,6 +443,15 @@ class Session(ActiveChoiceWorldSession):
         elif "no_go" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
+        # run bayesian strategy analysis
+        self.bayesian_strategy_analysis()
+
+        # log
+        row = self.trials_table.iloc[self.trial_num]
+        log.warning(
+            f"alpha={row['alpha']:.2f}, beta={row['beta']:.2f}, MAP={row['map_probability']:.2f}, precision={row['precision']:.2f}"
+        )
+
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
     def _finalize(self):
@@ -451,6 +465,101 @@ class Session(ActiveChoiceWorldSession):
         df.to_csv(output_path, index=False)
 
         log.info(f"Trials table saved to {output_path}")
+
+    @staticmethod
+    def set_priors(prior_type: str):
+        if prior_type == "Uniform":
+            alpha0, beta0 = 1, 1
+        elif prior_type == "Jeffreys":
+            alpha0, beta0 = 0.5, 0.5
+        else:
+            raise ValueError(f"Unknown prior: {prior_type}")
+        return alpha0, beta0
+
+    @staticmethod
+    def update_strategy_posterior_probability(
+        trial_type, decay_rate, success_total, failure_total, alpha0, beta0
+    ):
+        if trial_type == "success":
+            success_total = decay_rate * success_total + 1
+            failure_total = decay_rate * failure_total
+            alpha = alpha0 + success_total
+            beta = beta0 + failure_total
+        elif trial_type == "failure":
+            success_total = decay_rate * success_total
+            failure_total = decay_rate * failure_total + 1
+            alpha = alpha0 + success_total
+            beta = beta0 + failure_total
+        else:
+            alpha = np.nan
+            beta = np.nan
+
+        return success_total, failure_total, alpha, beta
+
+    @staticmethod
+    def summaries_of_beta_distribution(alpha, beta_params, stat_type, *args):
+        if np.isnan(alpha) or np.isnan(beta_params):
+            statistic = np.nan
+        else:
+            if stat_type == "MAP":
+                x = np.arange(0, 1, 0.001)
+                y = beta.pdf(x, alpha, beta_params)
+                statistic = x[np.argmax(y)]
+            elif stat_type == "Mean":
+                statistic = alpha / (alpha + beta_params)
+            elif stat_type == "Var":
+                statistic = (alpha * beta_params) / (
+                    ((alpha + beta_params) ** 2) * (alpha + beta_params + 1)
+                )
+            elif stat_type == "precision":
+                statistic = 1 / (
+                    (alpha * beta_params)
+                    / (((alpha + beta_params) ** 2) * (alpha + beta_params + 1))
+                )
+            elif stat_type == "Percentile":
+                Prct = args[0]
+                Delta = 1 - Prct
+                P = [Delta / 2, Prct + Delta / 2]
+                statistic = beta.ppf(P, alpha, beta_params)
+            else:
+                print("ERROR")
+        return statistic
+
+    def bayesian_strategy_analysis(self):
+        if self.trial_num == 0:
+            self.prior_type = "Uniform"  # choose prior type
+            self.alpha0, self.beta0 = self.set_priors(self.prior_type)  # define priors
+            self.decay_rate = 0.9  # set decay rate (gamma)
+            # initialise variables to zero
+            self.success_total = 0
+            self.failure_total = 0
+
+        # get current trial only
+        row = self.trials_table.iloc[self.trial_num]
+        trial_type = "success" if row["trial_correct"] else "failure"
+
+        # update once
+        self.success_total, self.failure_total, alpha, beta = (
+            self.update_strategy_posterior_probability(
+                trial_type,
+                self.decay_rate,
+                self.success_total,
+                self.failure_total,
+                self.alpha0,
+                self.beta0,
+            )
+        )
+
+        map_probability = self.summaries_of_beta_distribution(alpha, beta, "MAP")
+        precision = self.summaries_of_beta_distribution(alpha, beta, "precision")
+
+        # store only current trial
+        self.trials_table.at[self.trial_num, "alpha"] = alpha
+        self.trials_table.at[self.trial_num, "beta"] = beta
+        self.trials_table.at[self.trial_num, "map_probability"] = map_probability
+        self.trials_table.at[self.trial_num, "precision"] = precision
+        self.trials_table.at[self.trial_num, "success_total"] = self.success_total
+        self.trials_table.at[self.trial_num, "failure_total"] = self.failure_total
 
 
 if __name__ == "__main__":  # pragma: no cover
