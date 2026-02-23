@@ -30,6 +30,8 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     beta: float
     map_probability: float
     precision: float
+    success_total: float
+    failure_total: float
 
 
 class Session(ActiveChoiceWorldSession):
@@ -377,6 +379,12 @@ class Session(ActiveChoiceWorldSession):
             "Correct End Position": self.correct_end_position,
             "N Trials Block": self.block_trial_counter
             + 1,  # +1 because counter starts at 0
+            "Alpha": trial_info.alpha,
+            "Beta": trial_info.beta,
+            "MAP Probability": trial_info.map_probability,
+            "Precision": trial_info.precision,
+            "Success Total": trial_info.success_total,
+            "Failure Total": trial_info.failure_total,
         }
 
         # update info dict with extra_info dict
@@ -445,12 +453,6 @@ class Session(ActiveChoiceWorldSession):
 
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
-
-        # log
-        row = self.trials_table.iloc[self.trial_num]
-        log.warning(
-            f"alpha={row['alpha']:.2f}, beta={row['beta']:.2f}, MAP={row['map_probability']:.2f}, precision={row['precision']:.2f}"
-        )
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
