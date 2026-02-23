@@ -164,7 +164,9 @@ class Session(ActiveChoiceWorldSession):
         ):  # TODO change reversal criterion here
             self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
             self.block_trial_counter = 0
-            log.warning(f"Reversal! New block side: {self.block_side}") # does not work with log.info
+            log.warning(
+                f"Reversal! New block side: {self.block_side}"
+            )  # does not work with log.info
 
         self.draw_next_trial_info(
             pleft=self.task_params.PROBABILITY_LEFT
@@ -368,7 +370,8 @@ class Session(ActiveChoiceWorldSession):
         info_dict = {
             "Block Side": f"{trial_info.block_side}",
             "Correct End Position": self.correct_end_position,
-            "N Trials Block": self.block_trial_counter + 1, # +1 because counter starts at 0
+            "N Trials Block": self.block_trial_counter
+            + 1,  # +1 because counter starts at 0
         }
 
         # update info dict with extra_info dict
@@ -427,7 +430,7 @@ class Session(ActiveChoiceWorldSession):
             self.session_info.NTRIALS_CORRECT += 1
             self.trials_table.at[self.trial_num, "response_side"] = np.sign(
                 self.correct_end_position
-            )
+            )  # np.sign returns 1 for positive and -1 for negative numbers
         elif "error" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
                 self.correct_end_position
@@ -436,6 +439,18 @@ class Session(ActiveChoiceWorldSession):
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
+
+    def _finalize(self):
+        # first let parent clean up (kills plotting subprocess etc.)
+        super()._finalize()
+
+        # save only completed trials
+        df = self.trials_table.iloc[: self.trial_num + 1]
+
+        output_path = self.paths.SESSION_FOLDER / "trials_table.csv"
+        df.to_csv(output_path, index=False)
+
+        log.info(f"Trials table saved to {output_path}")
 
 
 if __name__ == "__main__":  # pragma: no cover
