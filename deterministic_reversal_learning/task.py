@@ -24,8 +24,7 @@ with open(Path(__file__).parent.joinpath("task_parameters.yaml")) as f:
 class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
-    correct_end_position: float  # -35.0 or +35.0
-    block_side: float  # -1 for left or +1 for right
+    block_side: int  # -1 for left or +1 for right
 
 
 class Session(ActiveChoiceWorldSession):
@@ -43,7 +42,7 @@ class Session(ActiveChoiceWorldSession):
             -1
         )  # start with left block (-1 = left, +1 = right) # TODO make this random!!
         self.block_length = self.task_params.BLOCK_LENGTH
-        self.block_trial_counter = 0
+        self.block_trial_counter = -1 # needs to be -1 and not 0 for next_trial condition to work
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -136,13 +135,13 @@ class Session(ActiveChoiceWorldSession):
     @property
     def event_error(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
-            (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
+            (1 if self.task_params.STIM_REVERSE else -1) * self.correct_end_position
         ]
 
     @property
     def event_reward(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
-            (1 if self.task_params.STIM_REVERSE else -1) * self.correct_end_position
+            (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
         ]
 
     def next_trial(self):

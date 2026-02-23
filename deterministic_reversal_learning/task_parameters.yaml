@@ -1,6 +1,6 @@
 'AUTOMATIC_CALIBRATION': true
 'ADAPTIVE_REWARD': false
-'BLOCK_LENGTH': 5 # 120 in the end, but test with 5
+'BLOCK_LENGTH': 3 # 120 in the end, but test with 5
 'BONSAI_EDITOR': false
 'CALIBRATION_VALUE': 0.067
 'CONTRAST_SET': [1.0]
