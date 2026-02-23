@@ -38,9 +38,7 @@ class Session(ActiveChoiceWorldSession):
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory()
         # add block state
-        self.block_side = (
-            -1
-        )  # start with left block (-1 = left, +1 = right) # TODO make this random!!
+        self.block_side = int(np.random.choice(self.task_params.BLOCK_SIDES, p=[self.task_params.PROBABILITY_LEFT, 1-self.task_params.PROBABILITY_LEFT]))  # -1 = left, +1 = right
         self.block_length = self.task_params.BLOCK_LENGTH
         self.block_trial_counter = -1 # needs to be -1 and not 0 for next_trial condition to work
 
