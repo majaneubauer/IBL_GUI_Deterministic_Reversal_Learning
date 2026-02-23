@@ -6,6 +6,7 @@ from iblrig.hifi import HiFi
 import numpy as np
 from typing import Any
 from re import split as re_split
+import matplotlib.pyplot as plt
 from scipy.stats import beta
 from iblrig.hardware import RotaryEncoderModule
 
@@ -58,6 +59,24 @@ class Session(ActiveChoiceWorldSession):
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
+
+        # initialise online plots
+        self.init_online_plot()
+
+    # initialise online plots
+    def init_online_plot(self):
+        plt.ion()  # interactive mode ON
+        self.fig, self.ax = plt.subplots(figsize=(10, 5))
+        (self.line_map,) = self.ax.plot([], [], lw=0.75, label="MAP probability")
+        self.ax.axhline(
+            y=0.5, color="firebrick", linestyle="--", linewidth=0.75, label="Chance"
+        )
+        self.ax.set_xlim(0, self.task_params.NTRIALS)
+        self.ax.set_ylim(0, 1.25)
+        self.ax.set_xlabel("Trial")
+        self.ax.set_ylabel("P(Strategy)")
+        self.ax.legend()
+        plt.show()
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -369,31 +388,6 @@ class Session(ActiveChoiceWorldSession):
 
         return sma
 
-    def show_trial_log(
-        self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO
-    ):
-        # construct info dict
-        trial_info = self.trials_table.iloc[self.trial_num]
-        info_dict = {
-            "Block Side": f"{trial_info.block_side}",
-            "Correct End Position": self.correct_end_position,
-            "N Trials Block": self.block_trial_counter
-            + 1,  # +1 because counter starts at 0
-            "Alpha": trial_info.alpha,
-            "Beta": trial_info.beta,
-            "MAP Probability": trial_info.map_probability,
-            "Precision": trial_info.precision,
-            "Success Total": trial_info.success_total,
-            "Failure Total": trial_info.failure_total,
-        }
-
-        # update info dict with extra_info dict
-        if isinstance(extra_info, dict):
-            info_dict.update(extra_info)
-
-        # call parent method
-        super().show_trial_log(extra_info=info_dict, log_level=log_level)
-
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
@@ -455,6 +449,31 @@ class Session(ActiveChoiceWorldSession):
         self.bayesian_strategy_analysis()
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
+
+    def show_trial_log(
+        self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO
+    ):
+        # construct info dict
+        trial_info = self.trials_table.iloc[self.trial_num]
+        info_dict = {
+            "Block Side": f"{trial_info.block_side}",
+            "Correct End Position": self.correct_end_position,
+            "N Trials Block": self.block_trial_counter
+            + 1,  # +1 because counter starts at 0
+            "Alpha": trial_info.alpha,
+            "Beta": trial_info.beta,
+            "MAP Probability": trial_info.map_probability,
+            "Precision": trial_info.precision,
+            "Success Total": trial_info.success_total,
+            "Failure Total": trial_info.failure_total,
+        }
+
+        # update info dict with extra_info dict
+        if isinstance(extra_info, dict):
+            info_dict.update(extra_info)
+
+        # call parent method
+        super().show_trial_log(extra_info=info_dict, log_level=log_level)
 
     def _finalize(self):
         # first let parent clean up (kills plotting subprocess etc.)
@@ -535,6 +554,8 @@ class Session(ActiveChoiceWorldSession):
             # initialise variables to zero
             self.success_total = 0
             self.failure_total = 0
+            # initialise list to store MAP probabilities
+            self.map_data = []
 
         # get current trial only
         row = self.trials_table.iloc[self.trial_num]
@@ -562,6 +583,14 @@ class Session(ActiveChoiceWorldSession):
         self.trials_table.at[self.trial_num, "precision"] = precision
         self.trials_table.at[self.trial_num, "success_total"] = self.success_total
         self.trials_table.at[self.trial_num, "failure_total"] = self.failure_total
+
+        # online plots
+        self.map_data.append(map_probability)  # add latest MAP
+        self.line_map.set_data(range(len(self.map_data)), self.map_data)  # update line
+        self.ax.relim()  # recompute axis limits
+        self.ax.autoscale_view()  # rescale axes
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
 
 if __name__ == "__main__":  # pragma: no cover
