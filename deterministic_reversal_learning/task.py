@@ -4,7 +4,7 @@ import yaml
 import iblrig
 from iblrig.hifi import HiFi
 import numpy as np
-import pandas as pd
+from typing import Any
 from re import split as re_split
 from iblrig.hardware import RotaryEncoderModule
 
@@ -38,9 +38,19 @@ class Session(ActiveChoiceWorldSession):
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory()
         # add block state
-        self.block_side = int(np.random.choice(self.task_params.BLOCK_SIDES, p=[self.task_params.PROBABILITY_LEFT, 1-self.task_params.PROBABILITY_LEFT]))  # -1 = left, +1 = right
+        self.block_side = int(
+            np.random.choice(
+                self.task_params.BLOCK_SIDES,
+                p=[
+                    self.task_params.PROBABILITY_LEFT,
+                    1 - self.task_params.PROBABILITY_LEFT,
+                ],
+            )
+        )  # -1 = left, +1 = right
         self.block_length = self.task_params.BLOCK_LENGTH
-        self.block_trial_counter = -1 # needs to be -1 and not 0 for next_trial condition to work
+        self.block_trial_counter = (
+            -1
+        )  # needs to be -1 and not 0 for next_trial condition to work
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -149,10 +159,12 @@ class Session(ActiveChoiceWorldSession):
         self.block_trial_counter += 1
 
         # deterministic reversal
-        if self.block_trial_counter >= self.block_length:
+        if (
+            self.block_trial_counter >= self.block_length
+        ):  # TODO change reversal criterion here
             self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
             self.block_trial_counter = 0
-            log.info(f"Reversal! New block side: {self.block_side}")
+            log.log(f"Reversal! New block side: {self.block_side}")
 
         self.draw_next_trial_info(
             pleft=self.task_params.PROBABILITY_LEFT
@@ -347,6 +359,23 @@ class Session(ActiveChoiceWorldSession):
         )
 
         return sma
+
+    def show_trial_log(
+        self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO
+    ):
+        # construct info dict
+        trial_info = self.trials_table.iloc[self.trial_num]
+        info_dict = {
+            "Block Side": f"{trial_info.block_side}",
+            "Correct End Position": self.correct_end_position,
+        }
+
+        # update info dict with extra_info dict
+        if isinstance(extra_info, dict):
+            info_dict.update(extra_info)
+
+        # call parent method
+        super().show_trial_log(extra_info=info_dict, log_level=log_level)
 
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
