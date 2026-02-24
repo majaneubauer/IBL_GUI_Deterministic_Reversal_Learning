@@ -10,7 +10,11 @@ import matplotlib.pyplot as plt
 from scipy.stats import beta
 import pyqtgraph as pg
 from qtpy.QtWidgets import QApplication
+from qtpy.QtCore import QTimer
+import pyqtgraph as pg
+from qtpy.QtWidgets import QWidget, QVBoxLayout
 from iblrig.hardware import RotaryEncoderModule
+from iblrig.gui.online_plots import OnlinePlotsView
 
 from iblrig.base_choice_world import (
     ActiveChoiceWorldSession,
@@ -65,51 +69,54 @@ class Session(ActiveChoiceWorldSession):
         # initialise online plots
         self.init_online_plot()
 
-        # initialise bsa online plots
-        self.bsa_plot = None
-        self.bsa_curve = None
-
     # initialise online plots
+    # def init_online_plot(self):
+    #     plt.ion()  # interactive mode ON
+    #     self.fig, self.ax = plt.subplots(figsize=(10, 5))
+    #     (self.line_map,) = self.ax.plot([], [], lw=0.75, label="MAP probability")
+    #     self.ax.axhline(
+    #         y=0.5, color="firebrick", linestyle="--", linewidth=0.75, label="Chance"
+    #     )
+    #     self.ax.set_xlim(0, self.task_params.NTRIALS)
+    #     self.ax.set_ylim(0, 1.25)
+    #     self.ax.set_xlabel("Trial")
+    #     self.ax.set_ylabel("P(Strategy)")
+    #     self.ax.legend()
+    #     plt.show()
     def init_online_plot(self):
-        plt.ion()  # interactive mode ON
-        self.fig, self.ax = plt.subplots(figsize=(10, 5))
-        (self.line_map,) = self.ax.plot([], [], lw=0.75, label="MAP probability")
-        self.ax.axhline(
-            y=0.5, color="firebrick", linestyle="--", linewidth=0.75, label="Chance"
-        )
-        self.ax.set_xlim(0, self.task_params.NTRIALS)
-        self.ax.set_ylim(0, 1.25)
-        self.ax.set_xlabel("Trial")
-        self.ax.set_ylabel("P(Strategy)")
-        self.ax.legend()
-        plt.show()
+        self.map_data = []
+        self.bsa_curve = None
+        self.bsa_plot = None
+        self.bsa_window = None
 
     def attach_bsa_plot(self):
-        app = QApplication.instance()
-        for widget in app.topLevelWidgets():
-            if widget.windowTitle() == "Online Plots":
-                self.online_window = widget
-                break
-        else:
-            self.online_window = None
+        if self.bsa_window is not None:
+            return  # already created
+    
+        # create window
+        self.bsa_window = QWidget()
+        self.bsa_window.setWindowTitle("Bayesian Strategy Analysis")
+        layout = QVBoxLayout(self.bsa_window)
 
-        # modify layout of self.online_window
-        if self.online_window is not None:
-            layout = self.online_window.centralWidget().layout()
-            # remove psychometric and chronometric plots
-            self.online_window.psychometricWidget.setParent(None)
-            self.online_window.chronometricWidget.setParent(None)
-            # create own plot
-            self.bsa_plot = pg.PlotWidget()
-            self.bsa_plot.setBackground("w")
-            self.bsa_plot.setTitle("Bayesian Strategy Analysis - Correct Choice")
-            self.bsa_plot.setLabel("left", "P(Strategy)")
-            self.bsa_plot.setLabel("bottom", "Trial")
-            self.bsa_plot.setYRange(0, 1.25)
-            self.bsa_curve = self.bsa_plot.plot(pen=pg.mkPen(width=2))
+        # create plot widget
+        self.bsa_plot = pg.PlotWidget()
+        self.bsa_plot.setBackground("w")
+        self.bsa_plot.setTitle("Bayesian Strategy Analysis")
+        self.bsa_plot.setLabel("left", "P(Strategy)")
+        self.bsa_plot.setLabel("bottom", "Trial")
+        self.bsa_plot.setYRange(0, 1.25)
 
-            # add into layout at same position
-            layout.addWidget(self.bsa_plot, 1, 1, 2, 1)
+        # add plot to window
+        layout.addWidget(self.bsa_plot)
+        self.bsa_window.setLayout(layout)
+        self.bsa_window.resize(800, 400)
+        self.bsa_window.show()
+
+        # add map probability line
+        self.bsa_curve = self.bsa_plot.plot(pen=pg.mkPen(width=2))
+        # populate with any existing MAP data
+        if len(self.map_data) > 0:
+            self.bsa_curve.setData(range(len(self.map_data)), self.map_data)
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -478,12 +485,12 @@ class Session(ActiveChoiceWorldSession):
         elif "no_go" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
-        # attach plot once
-        if not hasattr(self, "bsa_plot"):
-            self.attach_bsa_plot()
-
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
+
+        # attach bsa plot only when QApplication exists --> after first trial
+        if self.trial_num == 1:
+            self.attach_bsa_plot()
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
@@ -622,18 +629,17 @@ class Session(ActiveChoiceWorldSession):
         self.trials_table.at[self.trial_num, "failure_total"] = self.failure_total
 
         # online plots
-        self.map_data.append(map_probability)  # add latest MAP
-        self.line_map.set_data(range(len(self.map_data)), self.map_data)  # update line
-        self.ax.relim()  # recompute axis limits
-        self.ax.autoscale_view()  # rescale axes
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-        # online plots widget
-        if hasattr(self, "bsa_curve"):
-            trials = np.arange(self.trial_num + 1)
-            map_probs = self.trials_table["map_probability"].iloc[: self.trial_num + 1]
-            self.bsa_curve.setData(trials, map_probs)
+        # self.map_data.append(map_probability)  # add latest MAP
+        # self.line_map.set_data(range(len(self.map_data)), self.map_data)  # update line
+        # self.ax.relim()  # recompute axis limits
+        # self.ax.autoscale_view()  # rescale axes
+        # self.fig.canvas.draw()
+        # self.fig.canvas.flush_events()
+        # update widget
+        self.map_data.append(map_probability)
+        if self.bsa_curve is not None:
+            trials = list(range(len(self.map_data)))
+            self.bsa_curve.setData(trials, self.map_data)
 
 
 if __name__ == "__main__":  # pragma: no cover
