@@ -8,6 +8,8 @@ from typing import Any
 from re import split as re_split
 import matplotlib.pyplot as plt
 from scipy.stats import beta
+import pyqtgraph as pg
+from qtpy.QtWidgets import QApplication
 from iblrig.hardware import RotaryEncoderModule
 
 from iblrig.base_choice_world import (
@@ -63,6 +65,10 @@ class Session(ActiveChoiceWorldSession):
         # initialise online plots
         self.init_online_plot()
 
+        # initialise bsa online plots
+        self.bsa_plot = None
+        self.bsa_curve = None
+
     # initialise online plots
     def init_online_plot(self):
         plt.ion()  # interactive mode ON
@@ -77,6 +83,33 @@ class Session(ActiveChoiceWorldSession):
         self.ax.set_ylabel("P(Strategy)")
         self.ax.legend()
         plt.show()
+
+    def attach_bsa_plot(self):
+        app = QApplication.instance()
+        for widget in app.topLevelWidgets():
+            if widget.windowTitle() == "Online Plots":
+                self.online_window = widget
+                break
+        else:
+            self.online_window = None
+
+        # modify layout of self.online_window
+        if self.online_window is not None:
+            layout = self.online_window.centralWidget().layout()
+            # remove psychometric and chronometric plots
+            self.online_window.psychometricWidget.setParent(None)
+            self.online_window.chronometricWidget.setParent(None)
+            # create own plot
+            self.bsa_plot = pg.PlotWidget()
+            self.bsa_plot.setBackground("w")
+            self.bsa_plot.setTitle("Bayesian Strategy Analysis - Correct Choice")
+            self.bsa_plot.setLabel("left", "P(Strategy)")
+            self.bsa_plot.setLabel("bottom", "Trial")
+            self.bsa_plot.setYRange(0, 1.25)
+            self.bsa_curve = self.bsa_plot.plot(pen=pg.mkPen(width=2))
+
+            # add into layout at same position
+            layout.addWidget(self.bsa_plot, 1, 1, 2, 1)
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -445,6 +478,10 @@ class Session(ActiveChoiceWorldSession):
         elif "no_go" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
+        # attach plot once
+        if not hasattr(self, "bsa_plot"):
+            self.attach_bsa_plot()
+
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
 
@@ -591,6 +628,12 @@ class Session(ActiveChoiceWorldSession):
         self.ax.autoscale_view()  # rescale axes
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+        # online plots widget
+        if hasattr(self, "bsa_curve"):
+            trials = np.arange(self.trial_num + 1)
+            map_probs = self.trials_table["map_probability"].iloc[: self.trial_num + 1]
+            self.bsa_curve.setData(trials, map_probs)
 
 
 if __name__ == "__main__":  # pragma: no cover
