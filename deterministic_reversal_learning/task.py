@@ -576,6 +576,8 @@ class Session(ActiveChoiceWorldSession):
         self.trials_table.at[self.trial_num, "success_total"] = self.success_total
         self.trials_table.at[self.trial_num, "failure_total"] = self.failure_total
 
+        self.map_data.append(map_probability)  # add latest MAP
+
 
 if __name__ == "__main__":  # pragma: no cover
     kwargs = get_task_arguments(parents=[Session.extra_parser()])
