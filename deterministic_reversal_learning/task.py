@@ -41,7 +41,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     failure_total: float
 
 
-class Session(ActiveChoiceWorldSession):
+class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
     protocol_name = (
         "DeterministicReversalLearning"  # here defined how it shows up in GUI
     )
@@ -82,9 +82,9 @@ class Session(ActiveChoiceWorldSession):
         self.ax.set_xlabel("Trial")
         self.ax.set_ylabel("P(Strategy)")
         self.ax.legend()
-        # plot session lines
-        session_lines = np.arange(self.block_length-1, self.task_params.NTRIALS, self.block_length)
-        for line in session_lines:
+        # plot block lines
+        block_lines = np.arange(self.block_length-1, self.task_params.NTRIALS, self.block_length)
+        for line in block_lines:
             self.ax.axvline(
                 x=line, color="lightgrey", linewidth=0.75, zorder=0, ymax=1.05
             )
@@ -610,6 +610,6 @@ class Session(ActiveChoiceWorldSession):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    kwargs = get_task_arguments(parents=[Session.extra_parser()])
-    sess = Session(**kwargs)
+    kwargs = get_task_arguments(parents=[DeterministicReversalLearningSession.extra_parser()])
+    sess = DeterministicReversalLearningSession(**kwargs)
     sess.run()
