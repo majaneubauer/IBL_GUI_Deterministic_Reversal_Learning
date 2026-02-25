@@ -82,6 +82,12 @@ class Session(ActiveChoiceWorldSession):
         self.ax.set_xlabel("Trial")
         self.ax.set_ylabel("P(Strategy)")
         self.ax.legend()
+        # plot session lines
+        session_lines = np.arange(0, self.task_params.NTRIALS, self.block_length)
+        for line in session_lines:
+            self.ax.axvline(
+                x=line, color="lightgrey", linewidth=0.75, zorder=0, ymax=1.05
+            )
         plt.show()
 
     def init_mixin_sound(self):
@@ -190,9 +196,14 @@ class Session(ActiveChoiceWorldSession):
         # update block counter
         self.block_trial_counter += 1
 
+        # get latest MAP if it exists
+        current_map = self.trials_table.at[self.trial_num - 1, "map_probability"]
+
         # deterministic reversal
         if (
             self.block_trial_counter >= self.block_length
+            and current_map is not None
+            and current_map >= 0.5
         ):  # TODO change reversal criterion here
             self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
             self.block_trial_counter = 0
