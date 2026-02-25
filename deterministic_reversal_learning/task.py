@@ -83,7 +83,7 @@ class Session(ActiveChoiceWorldSession):
         self.ax.set_ylabel("P(Strategy)")
         self.ax.legend()
         # plot session lines
-        session_lines = np.arange(0, self.task_params.NTRIALS, self.block_length)
+        session_lines = np.arange(self.block_length-1, self.task_params.NTRIALS, self.block_length)
         for line in session_lines:
             self.ax.axvline(
                 x=line, color="lightgrey", linewidth=0.75, zorder=0, ymax=1.05
@@ -197,19 +197,18 @@ class Session(ActiveChoiceWorldSession):
         self.block_trial_counter += 1
 
         # get latest MAP if it exists
-        current_map = self.trials_table.at[self.trial_num - 1, "map_probability"]
+        current_map = self.map_data[-1] if hasattr(self, "map_data") and self.map_data else None
 
         # deterministic reversal
-        if (
-            self.block_trial_counter >= self.block_length
-            and current_map is not None
-            and current_map >= 0.5
-        ):  # TODO change reversal criterion here
-            self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
-            self.block_trial_counter = 0
-            log.warning(
-                f"Reversal! New block side: {self.block_side}"
-            )  # does not work with log.info
+        if self.block_trial_counter % self.block_length == 0: # modulo operator ensures that this is only checked at the end of a block # TODO change reversal criterion here
+            if current_map is not None and current_map >= 0.5:
+                self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
+                self.block_trial_counter = 0
+                log.warning(
+                    f"Reversal! New block side: {self.block_side}"
+                )  # does not work with log.info
+            else:
+                log.warning(f"Reversal criterion not met! Continuing with current block side: {self.block_side}")
 
         self.draw_next_trial_info(
             pleft=self.task_params.PROBABILITY_LEFT

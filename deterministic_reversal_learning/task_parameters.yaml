@@ -1,6 +1,6 @@
 'AUTOMATIC_CALIBRATION': true
 'ADAPTIVE_REWARD': false
-'BLOCK_LENGTH': 5 # 120 in the end, but test with 5
+'BLOCK_LENGTH': 10 # 120 in the end, but test with 10
 'BLOCK_SIDES': [-1, 1] # -1 left block, +1 right block
 'BONSAI_EDITOR': false
 'CALIBRATION_VALUE': 0.067
@@ -21,7 +21,7 @@
 'INTERACTIVE_DELAY': 0.0
 'DEAD_TIME': 0.5  # the length of time before entering the next trial. This plus ITI_DELAY_SECS define period of closed-loop grey screen
 'ITI_DELAY_SECS': 0.5  # this is the length of the ITI state at the end of the session. 0.5 seconds are added to it until the next trial start
-'NTRIALS': 360
+'NTRIALS': 100 # 360 in the end, but test with 100
 'PROBABILITY_LEFT': 0.5
 'QUIESCENCE_THRESHOLDS': [-2, 2]
 'QUIESCENT_PERIOD': 0.2
