@@ -41,7 +41,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     failure_total: float
 
 
-class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
+class Session(ActiveChoiceWorldSession):
     protocol_name = (
         "DeterministicReversalLearning"  # here defined how it shows up in GUI
     )
@@ -65,30 +65,6 @@ class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
-
-        # initialise online plots
-        self.init_online_plot()
-
-    # initialise online plots
-    def init_online_plot(self):
-        plt.ion()  # interactive mode ON
-        self.fig, self.ax = plt.subplots(figsize=(10, 5))
-        (self.line_map,) = self.ax.plot([], [], lw=1, label="MAP probability")
-        self.ax.axhline(
-            y=0.5, color="firebrick", linestyle="--", linewidth=0.75, label="Chance"
-        )
-        self.ax.set_xlim(0, self.task_params.NTRIALS)
-        self.ax.set_ylim(-0.05, 1.05)
-        self.ax.set_xlabel("Trial")
-        self.ax.set_ylabel("P(Strategy)")
-        self.ax.legend()
-        # plot block lines
-        block_lines = np.arange(self.block_length-1, self.task_params.NTRIALS, self.block_length)
-        for line in block_lines:
-            self.ax.axvline(
-                x=line, color="lightgrey", linewidth=0.75, zorder=0, ymax=1.05
-            )
-        plt.show()
 
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -600,16 +576,8 @@ class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
         self.trials_table.at[self.trial_num, "success_total"] = self.success_total
         self.trials_table.at[self.trial_num, "failure_total"] = self.failure_total
 
-        # online plots
-        self.map_data.append(map_probability)  # add latest MAP
-        self.line_map.set_data(range(len(self.map_data)), self.map_data)  # update line
-        self.ax.relim()  # recompute axis limits
-        self.ax.autoscale_view()  # rescale axes
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
 
 if __name__ == "__main__":  # pragma: no cover
-    kwargs = get_task_arguments(parents=[DeterministicReversalLearningSession.extra_parser()])
-    sess = DeterministicReversalLearningSession(**kwargs)
+    kwargs = get_task_arguments(parents=[Session.extra_parser()])
+    sess = Session(**kwargs)
     sess.run()

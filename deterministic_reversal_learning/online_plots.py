@@ -848,6 +848,7 @@ class OnlinePlotsModel(QObject):
 class OnlinePlotsView(QMainWindow):
     colormap = pg.colormap.get('tab10', source='matplotlib')
 
+
     def __init__(self, session: FilePath | DirectoryPath | UUID4, parent: QObject | None = None):
         super().__init__(parent)
         pg.setConfigOptions(antialias=True)
@@ -909,6 +910,7 @@ class OnlinePlotsView(QMainWindow):
         self.psychometricWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
         self.psychometricWidget.plotItem.setYRange(0, 1, padding=0.05)
         self.psychometricWidget.plotItem.hoverEvent = self.mouseOverFunction
+        self.psychometricWidget.setVisible(False) # don't delete widget, just hide it
         layout.addWidget(self.psychometricWidget, 1, 1, 1, 1)
 
         # chronometric function
@@ -920,7 +922,57 @@ class OnlinePlotsView(QMainWindow):
         self.chronometricWidget.plotItem.setXRange(-1, 1, padding=0.025)
         self.chronometricWidget.plotItem.setYRange(-1, 2, padding=0.05)
         self.chronometricWidget.plotItem.hoverEvent = self.mouseOverFunction
+        self.chronometricWidget.setVisible(False) # don't delete widget, just hide it
         layout.addWidget(self.chronometricWidget, 2, 1, 1, 1)
+
+        # Bayesian strategy analysis continuous update on each trial
+        self.bsaWidgetcont = PlotWidget(parent=self)
+        self.bsaWidgetcont.plotItem.setTitle('Bayesian Strategy Analysis - Correct Choice', color='k')
+        self.bsaWidgetcont.plotItem.getAxis('left').setLabel('P(Strategy)')
+        self.bsaWidgetcont.plotItem.getAxis('bottom').setLabel('Trial')
+        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
+        self.bsaWidgetcont.plotItem.setYRange(0, 1, padding=0.025)
+        # create curve --> dots ensure we see something at trial 0
+        self.bsaCurvecont = self.bsaWidgetcont.plot(
+            [],
+            [],
+            pen=pg.mkPen('k', width=2),
+            symbol='o',
+            symbolSize=3,
+            symbolBrush='k'
+        )
+        self.bsaWidgetcont.plotItem.hoverEvent = self.mouseOverFunction
+        layout.addWidget(self.bsaWidgetcont, 1, 1, 1, 1) # same place as psychometric function
+
+        # Bayesian strategy analysis full trial list
+        self.bsaWidget = PlotWidget(parent=self)
+        self.bsaWidget.plotItem.setTitle('Bayesian Strategy Analysis - Correct Choice', color='k')
+        self.bsaWidget.plotItem.getAxis('left').setLabel('P(Strategy)')
+        self.bsaWidget.plotItem.getAxis('bottom').setLabel('Trial')
+        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
+        self.bsaWidget.plotItem.setYRange(0, 1, padding=0.05)
+        self.bsaWidget.plotItem.setXRange(0, 360, padding=0.025)
+        # create curve --> dots ensure we see something at trial 0
+        self.bsaCurve = self.bsaWidget.plot(
+            [],
+            [],
+            pen=pg.mkPen('k', width=2),
+            symbol='o',
+            symbolSize=3,
+            symbolBrush='k'
+        )
+        # plot block lines
+        block_lines = np.arange(9, 360, 10) # TODO change when you change block length
+        for line in block_lines:
+            vline = pg.InfiniteLine(
+                pos=line,
+                angle=90,                # vertical
+                pen=pg.mkPen((200, 200, 200), width=1)
+            )
+            vline.setZValue(-10)        # send behind data
+            self.bsaWidget.addItem(vline)
+        self.bsaWidget.plotItem.hoverEvent = self.mouseOverFunction
+        layout.addWidget(self.bsaWidget, 2, 1, 1, 1) # same place as chronometric function
 
         # performance chart
         self.performanceWidget = SingleBarChartWidget(parent=self, textFormat='{:0.1f} %')
@@ -1006,6 +1058,11 @@ class OnlinePlotsView(QMainWindow):
             self.chronometricWidget.plotDataItems[p].setData(x=x, y=y)
         self.performanceWidget.setValue(self.model.percentCorrect())
         self.rewardWidget.setValue(self.model.reward_amount)
+        if hasattr(self.model._trial_data, "map_probability"):
+            map_probs = self.model._trial_data["map_probability"].to_numpy()
+            trials = np.arange(len(map_probs))
+            self.bsaCurvecont.setData(trials, map_probs)
+            self.bsaCurve.setData(trials, map_probs)
         self.update()
 
     def keyPressEvent(self, event) -> None:
