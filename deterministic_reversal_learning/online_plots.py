@@ -841,6 +841,13 @@ class OnlinePlotsModel(QObject):
     def _nTrialsUpTo(self, trial: int) -> int:
         return trial + 1
     
+    def mapProbabilityUpToTrial(self, trial: int):
+        return self._trial_data["map_probability"][:self._nTrialsUpTo(trial)]
+    
+    def blockBoundariesUpToTrial(self, trial: int, block_length: int):
+        max_block = self._nTrialsUpTo(trial) // block_length
+        return [(i * block_length - 1) for i in range(1, max_block + 1)]
+    
     def percentCorrectUpToTrial(self, trial: int) -> float:
         return np.sum(self._trial_data["trial_correct"][:self._nTrialsUpTo(trial)]) / self._nTrialsUpTo(trial) * 100
     
@@ -1057,9 +1064,22 @@ class OnlinePlotsView(QMainWindow):
 
     @Slot(int)
     def updatePlots(self, trial: int):
+        self._updateBpod(trial)
+        self._updateTrials(trial)
+        self._updatePsychometrics()
+        self._updatePerformance(trial)
+        self._updateReward(trial)
+        self._updateBSA(trial)
+        self.update()
+
+    def _updateBpod(self, trial: int):
         self.bpodWidget.setData(self.model.bpod_data(trial))
+
+    def _updateTrials(self, trial: int):
         self.trials.table_view.setCurrentIndex(self.model.tableModel.index(trial, 0))
         self.trials.table_view.scrollTo(self.model.tableModel.index(trial, 0))
+
+    def _updatePsychometrics(self):
         for p in self.model.probability_set:
             data = self.model.psychometrics.loc[p].dropna(axis=0).astype(float)
             x = data.index.to_numpy()
@@ -1074,35 +1094,45 @@ class OnlinePlotsView(QMainWindow):
             self.chronometricWidget.upperCurves[p].setData(x=x, y=y + e)
             self.chronometricWidget.lowerCurves[p].setData(x=x, y=np.clip(y - e, np.finfo(float).tiny, None))
             self.chronometricWidget.plotDataItems[p].setData(x=x, y=y)
-        #self.performanceWidget.setValue(self.model.percentCorrect())
+
+    def _updatePerformance(self, trial: int):
         self.performanceWidget.setValue(self.model.percentCorrectUpToTrial(trial))
+
+    def _updateReward(self, trial: int):
         self.rewardWidget.setValue(self.model.rewardUpToTrial(trial))
-        if hasattr(self.model._trial_data, "map_probability"):
-            # update so that when you select a trial it plots only up until that trial
-            x = np.arange(self.model._nTrialsUpTo(trial)) # np.arange(0) is empty, np.arange(1) is 0 --> makes sure you see a dot for trial 0
-            y = self.model._trial_data["map_probability"][:self.model._nTrialsUpTo(trial)]
-            self.bsaCurvecont.setData(x, y)
-            self.bsaCurve.setData(x, y)
-            # Add vertical block lines
-            # remove old block lines so updatePlot does not stack them on top of each other
-            for line in self.bsa_block_lines:
-                self.bsaWidgetcont.removeItem(line)
-            # check how many full blocks have been completed yet
-            max_block = (self.model._nTrialsUpTo(trial)) // self.block_length # n_trials_show = 9+1 --> 10 // 10 = 1 --> max block = 1
-            # loop through each completed block
-            for i in range(1, max_block + 1): # start qith 1 and end before max_block + 1
-                pos = i * self.block_length - 1 # i is 1 --> 1 * 10-1 = 9 --> i represents one completed block boundary
-                vline = pg.InfiniteLine(
-                    pos=pos,
-                    angle=90,
-                    pen=pg.mkPen("lightgrey", width=1)
-                )
-                vline.setZValue(-10)
-                # add line to plot
-                self.bsaWidgetcont.addItem(vline)
-                # store so you can remove it later
-                self.bsa_block_lines.append(vline)
-        self.update()
+
+    def _updateBSA(self, trial: int):
+        if not hasattr(self.model._trial_data, "map_probability"):
+            return
+
+        x = np.arange(self.model._nTrialsUpTo(trial))
+        y = self.model.mapProbabilityUpToTrial(trial)
+
+        self.bsaCurvecont.setData(x, y)
+        self.bsaCurve.setData(x, y)
+
+        self._updateBlockLines(trial)
+
+    def _updateBlockLines(self, trial: int):
+        # remove old lines
+        for line in self.bsa_block_lines:
+            self.bsaWidgetcont.removeItem(line)
+        self.bsa_block_lines.clear()
+
+        boundaries = self.model.blockBoundariesUpToTrial(
+            trial,
+            self.block_length
+        )
+
+        for pos in boundaries:
+            vline = pg.InfiniteLine(
+                pos=pos,
+                angle=90,
+                pen=pg.mkPen("lightgrey", width=1)
+            )
+            vline.setZValue(-10)
+            self.bsaWidgetcont.addItem(vline)
+            self.bsa_block_lines.append(vline)
 
     def keyPressEvent(self, event) -> None:
         """Navigate trials using directional keys."""
