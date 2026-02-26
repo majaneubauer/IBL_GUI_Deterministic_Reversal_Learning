@@ -383,9 +383,9 @@ class Session(ActiveChoiceWorldSession):
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
-        # It is defined as the time passing between the start of `stim_on` and the end of `closed_loop`.
+        # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        response_time = state_times["closed_loop"][0][1] - state_times["stim_on"][0][0]
+        response_time = state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
