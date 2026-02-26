@@ -836,6 +836,16 @@ class OnlinePlotsModel(QObject):
 
     def percentCorrect(self) -> float:
         return self._n_trials_correct / (self._n_trials if self._n_trials > 0 else np.nan) * 100
+    
+    # helper function
+    def _nTrialsUpTo(self, trial: int) -> int:
+        return trial + 1
+    
+    def percentCorrectUpToTrial(self, trial: int) -> float:
+        return np.sum(self._trial_data["trial_correct"][:self._nTrialsUpTo(trial)]) / self._nTrialsUpTo(trial) * 100
+    
+    def rewardUpToTrial(self, trial: int) -> float:
+        return np.sum(self._trial_data["reward_amount"][:self._nTrialsUpTo(trial)])
 
     def bpod_data(self, trial: int) -> pd.DataFrame:
         return bpod_trial_data_to_dataframe(self._bpod_data[trial], trial)
@@ -929,6 +939,8 @@ class OnlinePlotsView(QMainWindow):
         layout.addWidget(self.chronometricWidget, 2, 1, 1, 1)
 
         # Bayesian strategy analysis continuous update on each trial
+        self.block_length = self.model.task_settings.get('BLOCK_LENGTH')
+        self.bsa_block_lines = []
         self.bsaWidgetcont = PlotWidget(parent=self)
         self.bsaWidgetcont.plotItem.setTitle('Bayesian Strategy Analysis - Correct Choice', color='k')
         self.bsaWidgetcont.plotItem.getAxis('left').setLabel('P(Strategy)')
@@ -966,13 +978,12 @@ class OnlinePlotsView(QMainWindow):
             symbolBrush='k'
         )
         # plot block lines
-        block_length = self.model.task_settings.get('BLOCK_LENGTH')
-        block_lines = np.arange(block_length - 1, NTRIALS_INIT, block_length) # TODO change when you change block length
+        block_lines = np.arange(self.block_length - 1, NTRIALS_INIT, self.block_length)
         for line in block_lines:
             vline = pg.InfiniteLine(
                 pos=line,
                 angle=90,                # vertical
-                pen=pg.mkPen((200, 200, 200), width=1)
+                pen=pg.mkPen("lightgrey", width=1)
             )
             vline.setZValue(-10)        # send behind data
             self.bsaWidget.addItem(vline)
@@ -1039,8 +1050,10 @@ class OnlinePlotsView(QMainWindow):
         elif event.currentItem.vb.sceneBoundingRect().contains(event.scenePos()):
             if event.currentItem == self.psychometricWidget.plotItem:
                 statusbar.showMessage('Psychometric Function, SEM')
-            else:
+            elif event.currentItem == self.chronometricWidget.plotItem:
                 statusbar.showMessage('Chronometric Function, SEM')
+            else:
+                statusbar.showMessage('Bayesian Strategy Analysis, Correct Choice')
 
     @Slot(int)
     def updatePlots(self, trial: int):
@@ -1061,13 +1074,34 @@ class OnlinePlotsView(QMainWindow):
             self.chronometricWidget.upperCurves[p].setData(x=x, y=y + e)
             self.chronometricWidget.lowerCurves[p].setData(x=x, y=np.clip(y - e, np.finfo(float).tiny, None))
             self.chronometricWidget.plotDataItems[p].setData(x=x, y=y)
-        self.performanceWidget.setValue(self.model.percentCorrect())
-        self.rewardWidget.setValue(self.model.reward_amount)
+        #self.performanceWidget.setValue(self.model.percentCorrect())
+        self.performanceWidget.setValue(self.model.percentCorrectUpToTrial(trial))
+        self.rewardWidget.setValue(self.model.rewardUpToTrial(trial))
         if hasattr(self.model._trial_data, "map_probability"):
-            map_probs = self.model._trial_data["map_probability"].to_numpy()
-            trials = np.arange(len(map_probs))
-            self.bsaCurvecont.setData(trials, map_probs)
-            self.bsaCurve.setData(trials, map_probs)
+            # update so that when you select a trial it plots only up until that trial
+            x = np.arange(self.model._nTrialsUpTo(trial)) # np.arange(0) is empty, np.arange(1) is 0 --> makes sure you see a dot for trial 0
+            y = self.model._trial_data["map_probability"][:self.model._nTrialsUpTo(trial)]
+            self.bsaCurvecont.setData(x, y)
+            self.bsaCurve.setData(x, y)
+            # Add vertical block lines
+            # remove old block lines so updatePlot does not stack them on top of each other
+            for line in self.bsa_block_lines:
+                self.bsaWidgetcont.removeItem(line)
+            # check how many full blocks have been completed yet
+            max_block = (self.model._nTrialsUpTo(trial)) // self.block_length # n_trials_show = 9+1 --> 10 // 10 = 1 --> max block = 1
+            # loop through each completed block
+            for i in range(1, max_block + 1): # start qith 1 and end before max_block + 1
+                pos = i * self.block_length - 1 # i is 1 --> 1 * 10-1 = 9 --> i represents one completed block boundary
+                vline = pg.InfiniteLine(
+                    pos=pos,
+                    angle=90,
+                    pen=pg.mkPen("lightgrey", width=1)
+                )
+                vline.setZValue(-10)
+                # add line to plot
+                self.bsaWidgetcont.addItem(vline)
+                # store so you can remove it later
+                self.bsa_block_lines.append(vline)
         self.update()
 
     def keyPressEvent(self, event) -> None:
