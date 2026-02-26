@@ -72,6 +72,8 @@ SessionPath = Annotated[
     PlainSerializer(lambda x: str(x), return_type=str),
 ]
 
+NTRIALS_INIT = 360
+
 
 @dataclass
 class Colors:
@@ -842,7 +844,8 @@ class OnlinePlotsModel(QObject):
         protocol = getattr(self, 'task_settings', dict()).get('PYBPOD_PROTOCOL', 'unknown task protocol')
         spacer = '  ·  '
         t_elapsed = str(self.timeElapsed()).split('.')[0]
-        return f'{protocol}{spacer}Trial {self._current_trial}{spacer}Elapsed Time: {t_elapsed}'
+        block_side = self._trial_data.iloc[self._current_trial]["block_side"]
+        return f'{protocol}{spacer}Trial {self._current_trial}{spacer}Elapsed Time: {t_elapsed}{spacer}Current Block Side: {block_side}'
 
 
 class OnlinePlotsView(QMainWindow):
@@ -943,6 +946,7 @@ class OnlinePlotsView(QMainWindow):
         )
         self.bsaWidgetcont.plotItem.hoverEvent = self.mouseOverFunction
         layout.addWidget(self.bsaWidgetcont, 1, 1, 1, 1) # same place as psychometric function
+        self.bsaWidgetcont.setDefaultPadding(0.01)
 
         # Bayesian strategy analysis full trial list
         self.bsaWidget = PlotWidget(parent=self)
@@ -950,8 +954,8 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidget.plotItem.getAxis('left').setLabel('P(Strategy)')
         self.bsaWidget.plotItem.getAxis('bottom').setLabel('Trial')
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
-        self.bsaWidget.plotItem.setYRange(0, 1, padding=0.05)
-        self.bsaWidget.plotItem.setXRange(0, 360, padding=0.025)
+        self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
+        self.bsaWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurve = self.bsaWidget.plot(
             [],
@@ -962,7 +966,8 @@ class OnlinePlotsView(QMainWindow):
             symbolBrush='k'
         )
         # plot block lines
-        block_lines = np.arange(9, 360, 10) # TODO change when you change block length
+        block_length = self.model.task_settings.get('BLOCK_LENGTH')
+        block_lines = np.arange(block_length - 1, NTRIALS_INIT, block_length) # TODO change when you change block length
         for line in block_lines:
             vline = pg.InfiniteLine(
                 pos=line,
