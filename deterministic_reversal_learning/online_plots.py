@@ -13,7 +13,15 @@ from typing import Annotated, Any
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from pydantic import UUID4, AfterValidator, DirectoryPath, Field, FilePath, PlainSerializer, validate_call
+from pydantic import (
+    UUID4,
+    AfterValidator,
+    DirectoryPath,
+    Field,
+    FilePath,
+    PlainSerializer,
+    validate_call,
+)
 from pydantic_settings import BaseSettings, CliPositionalArg
 from qtpy.QtCore import (
     QCoreApplication,
@@ -31,7 +39,17 @@ from qtpy.QtCore import (
     Signal,
     Slot,
 )
-from qtpy.QtGui import QBrush, QColor, QFont, QGradient, QIcon, QLinearGradient, QPainter, QPixmap, QTransform
+from qtpy.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QGradient,
+    QIcon,
+    QLinearGradient,
+    QPainter,
+    QPixmap,
+    QTransform,
+)
 from qtpy.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -62,7 +80,7 @@ from one.api import ONE
 
 def is_alf_path(value: Path) -> Path:
     if not is_session_path(value):
-        raise ValueError('Field is not a session path')
+        raise ValueError("Field is not a session path")
     return value
 
 
@@ -77,10 +95,10 @@ NTRIALS_INIT = 360
 
 @dataclass
 class Colors:
-    RED = '#eb5757'
-    GREEN = '#57eb8b'
-    YELLOW = '#ede34e'
-    TRANSPARENT = 'transparent'
+    RED = "#eb5757"
+    GREEN = "#57eb8b"
+    YELLOW = "#ede34e"
+    TRANSPARENT = "transparent"
 
 
 @dataclass
@@ -100,30 +118,37 @@ class PlotWidget(pg.PlotWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setBackground('white')
+        self.setBackground("white")
         self.plotItem.getViewBox().setBackgroundColor(pg.mkColor(250, 250, 250))
         self.plotItem.setMouseEnabled(x=False, y=False)
         self.plotItem.setMenuEnabled(False)
         self.plotItem.hideButtons()
-        for axis in ('left', 'bottom'):
-            self.plotItem.getAxis(axis).setTextPen('k')
+        for axis in ("left", "bottom"):
+            self.plotItem.getAxis(axis).setTextPen("k")
 
 
 class SingleBarChartWidget(PlotWidget):
     """A bar chart with a single column for use with PyQtGraph"""
 
-    _font = QFont('Helvetica', 18, QFont.Bold)
+    _font = QFont("Helvetica", 18, QFont.Bold)
 
-    def __init__(self, *args, barColor: Any = 0.2, textColor: Any = 1.0, textFormat: str = '{:g}', **kwargs):
+    def __init__(
+        self,
+        *args,
+        barColor: Any = 0.2,
+        textColor: Any = 1.0,
+        textFormat: str = "{:g}",
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
-        y_axis = self.plotItem.getAxis('left')
+        y_axis = self.plotItem.getAxis("left")
         y_axis.setWidth(40)
         y_axis.setGrid(128)
 
-        x_axis = self.plotItem.getAxis('bottom')
-        x_axis.setLabel(' ')
-        x_axis.setTicks([[(1, ' ')], []])
+        x_axis = self.plotItem.getAxis("bottom")
+        x_axis.setLabel(" ")
+        x_axis.setTicks([[(1, " ")], []])
         x_axis.setStyle(tickLength=0, tickAlpha=0)
         self.plotItem.setXRange(min=0, max=2, padding=0)
 
@@ -133,11 +158,13 @@ class SingleBarChartWidget(PlotWidget):
         gradient.setColorAt(0.9, bar_color)
         bar_color.setAlpha(128)
         gradient.setColorAt(0, bar_color)
-        self._barGraphItem = pg.BarGraphItem(x=1, width=2, height=0, pen=None, brush=QBrush(gradient))
+        self._barGraphItem = pg.BarGraphItem(
+            x=1, width=2, height=0, pen=None, brush=QBrush(gradient)
+        )
         self.addItem(self._barGraphItem)
 
         self._textFormat = textFormat
-        self._textItem = pg.TextItem('0', anchor=(0.5, 0), color=textColor)
+        self._textItem = pg.TextItem("0", anchor=(0.5, 0), color=textColor)
         self._textItem.setX(1)
         self._textItem.setY(50)
         self._textItem.setFont(self._font)
@@ -152,31 +179,43 @@ class SingleBarChartWidget(PlotWidget):
 
     def resizeEvent(self, ev):
         super().resizeEvent(ev)
-        if hasattr(self, '_textItem'):
+        if hasattr(self, "_textItem"):
             self._setTextAnchor()
 
     def _setTextAnchor(self):
         """Anchor _textItem above or below upper edge of _barGraphItem, depending on available space"""
-        bar_height_px = self.height() / self.viewRect().height() * self._barGraphItem.boundingRect().height()
+        bar_height_px = (
+            self.height()
+            / self.viewRect().height()
+            * self._barGraphItem.boundingRect().height()
+        )
         if self._textItem.boundingRect().height() > bar_height_px:
             self._textItem.setAnchor((0.5, 1))
-            self._textItem.setColor('black')
+            self._textItem.setColor("black")
         else:
             self._textItem.setAnchor((0.5, 0))
-            self._textItem.setColor('white')
+            self._textItem.setColor("white")
 
 
 class FunctionWidget(PlotWidget):
     """A widget for psychometric and chronometric functions"""
 
-    def __init__(self, *args, colors: pg.ColorMap, probabilities: Iterable[float], **kwargs):
+    def __init__(
+        self, *args, colors: pg.ColorMap, probabilities: Iterable[float], **kwargs
+    ):
         super().__init__(*args, **kwargs)
-        self.plotItem.addItem(pg.InfiniteLine(0, 90, 'black'))
-        for axis in ('left', 'bottom'):
+        self.plotItem.addItem(pg.InfiniteLine(0, 90, "black"))
+        for axis in ("left", "bottom"):
             self.plotItem.getAxis(axis).setGrid(128)
-            self.plotItem.getAxis(axis).setTextPen('k')
-        self.plotItem.getAxis('bottom').setLabel('Signed Contrast')
-        legend = pg.LegendItem(pen='lightgray', brush='w', offset=(45, 35), verSpacing=-5, labelTextColor='k')
+            self.plotItem.getAxis(axis).setTextPen("k")
+        self.plotItem.getAxis("bottom").setLabel("Signed Contrast")
+        legend = pg.LegendItem(
+            pen="lightgray",
+            brush="w",
+            offset=(45, 35),
+            verSpacing=-5,
+            labelTextColor="k",
+        )
         legend.setParentItem(self.plotItem.graphicsItem())
         legend.setZValue(1)
         self.plotDataItems = dict()
@@ -190,22 +229,26 @@ class FunctionWidget(PlotWidget):
             fill_color.setAlpha(32)
             self.upperCurves[p] = self.plotItem.plot(pen=null_pen)
             self.lowerCurves[p] = self.plotItem.plot(pen=null_pen)
-            self.fillItems[p] = pg.FillBetweenItem(self.upperCurves[p], self.lowerCurves[p], brush=fill_color, pen=null_pen)
+            self.fillItems[p] = pg.FillBetweenItem(
+                self.upperCurves[p], self.lowerCurves[p], brush=fill_color, pen=null_pen
+            )
             self.addItem(self.fillItems[p])
-            self.plotDataItems[p] = self.plotItem.plot(connect='all')
+            self.plotDataItems[p] = self.plotItem.plot(connect="all")
             self.plotDataItems[p].setData(x=[1, np.NAN], y=[np.NAN, 1])
             self.plotDataItems[p].setPen(pg.mkPen(color=line_color, width=4))
-            self.plotDataItems[p].setSymbol('o')
+            self.plotDataItems[p].setSymbol("o")
             self.plotDataItems[p].setSymbolPen(line_color)
             self.plotDataItems[p].setSymbolBrush(line_color.lighter(150))
             self.plotDataItems[p].setSymbolSize(4)
-            legend.addItem(self.plotDataItems[p], f'p = {p:0.1f}')
+            legend.addItem(self.plotDataItems[p], f"p = {p:0.1f}")
 
 
 class TrialsTableModel(DataFrameTableModel):
     """A table model that displays status tips for entries in the trials table."""
 
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any | None:
+    def data(
+        self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> Any | None:
         if index.isValid() and role == Qt.ItemDataRole.StatusTipRole:
             trial = index.siblingAtColumn(0).data()
             position = index.siblingAtColumn(1).data()
@@ -217,7 +260,7 @@ class TrialsTableModel(DataFrameTableModel):
                 f'Trial {trial}: {contrast:g}% contrast / {abs(position):g}° {"right" if position > 0 else "left"} '
                 f'{"/ debiasing " if debias else ""}/ {outcome}'
             )
-            return tip + ('.' if outcome == 'no-go' else f' after {timing:0.2f} s.')
+            return tip + ("." if outcome == "no-go" else f" after {timing:0.2f} s.")
         if index.isValid() and index.column() == 0 and role == Qt.TextAlignmentRole:
             return Qt.AlignRight | Qt.AlignVCenter
         return super().data(index, role)
@@ -245,9 +288,9 @@ class TrialsTableView(QTableView):
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.horizontalHeader().setStretchLastSection(True)
         self.setStyleSheet(
-            'QHeaderView::section { border: none; background-color: white; }'
-            'QTableView::item:selected { color: black; selection-background-color: rgba(0, 0, 0, 6%); }'
-            'QTableView { background-color: rgba(0, 0, 0, 3%); }'
+            "QHeaderView::section { border: none; background-color: white; }"
+            "QTableView::item:selected { color: black; selection-background-color: rgba(0, 0, 0, 6%); }"
+            "QTableView { background-color: rgba(0, 0, 0, 3%); }"
         )
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -290,7 +333,7 @@ class TrialsWidget(QWidget):
         layout.setContentsMargins(0, 7, 0, 36)
         self.setLayout(layout)
 
-        self.titleLabel = QLabel('Trials History')
+        self.titleLabel = QLabel("Trials History")
         self.titleLabel.setAlignment(Qt.AlignHCenter)
         font = self.titleLabel.font()
         font.setPointSize(11)
@@ -299,12 +342,18 @@ class TrialsWidget(QWidget):
 
         self.table_view = TrialsTableView(self)
         self.table_view.setModel(self.model)
-        self.table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table_view.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.table_view.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.table_view.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.ResizeToContents
+        )
         self.table_view.setColumnHidden(2, True)
         self.table_view.setColumnHidden(3, True)
         self.table_view.setColumnHidden(4, True)
-        self.table_view.selectionModel().selectionChanged.connect(self._onSelectionChange)
+        self.table_view.selectionModel().selectionChanged.connect(
+            self._onSelectionChange
+        )
         layout.addWidget(self.table_view)
         layout.setStretch(1, 1)
 
@@ -327,7 +376,12 @@ class StimulusDelegate(QStyledItemDelegate):
 
         diameter = round(option.rect.height() * 0.8)
         spacing = (option.rect.height() - diameter) // 2
-        x_pos = option.rect.left() + spacing if location < 0 else option.rect.right() - diameter - spacing
+        if location < 0:
+            x_pos = option.rect.left() + spacing
+        elif location > 0:
+            x_pos = option.rect.right() - diameter - spacing
+        else:  # location == 0
+            x_pos = option.rect.left() + (option.rect.width() - diameter) // 2
         y_pos = option.rect.top() + spacing
 
         # draw circle
@@ -339,13 +393,13 @@ class StimulusDelegate(QStyledItemDelegate):
 
         if debias:
             rect = QRect(x_pos, y_pos, diameter, diameter)
-            painter.setPen(QColor('white') if contrast > 0.5 else QColor('black'))
+            painter.setPen(QColor("white") if contrast > 0.5 else QColor("black"))
             painter.setFont(QFont(painter.font().family(), 9, -1, False))
-            painter.drawText(rect, Qt.AlignHCenter | Qt.AlignVCenter, 'DB')
+            painter.drawText(rect, Qt.AlignHCenter | Qt.AlignVCenter, "DB")
         painter.restore()
 
     def displayText(self, value, locale):
-        return ''
+        return ""
 
 
 class ResponseTimeDelegate(QStyledItemDelegate):
@@ -355,7 +409,7 @@ class ResponseTimeDelegate(QStyledItemDelegate):
     color_correct = QColor(0, 107, 90)
     color_error = QColor(219, 67, 37)
     color_nogo = QColor(192, 192, 192)
-    color_text = QColor('white')
+    color_text = QColor("white")
 
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
@@ -366,22 +420,24 @@ class ResponseTimeDelegate(QStyledItemDelegate):
 
         # Draw the progress bar
         painter.fillRect(option.rect, option.backgroundBrush)
-        if outcome == 'no-go':
+        if outcome == "no-go":
             return
         norm_value = np.log(value / self.norm_min) / self.norm_div
         filled_rect = QRectF(option.rect)
         filled_rect.setWidth(filled_rect.width() * norm_value)
-        painter.setBrush(self.color_correct if outcome == 'correct' else self.color_error)
+        painter.setBrush(
+            self.color_correct if outcome == "correct" else self.color_error
+        )
         painter.setPen(Qt.NoPen)
         painter.drawRect(filled_rect)
 
         painter.setPen(self.color_text)
-        value_text = f'{value:.2f}' if outcome != 'no-go' else 'N/A'
+        value_text = f"{value:.2f}" if outcome != "no-go" else "N/A"
         filled_rect.adjust(0, 0, -5, 0)
         painter.drawText(filled_rect, Qt.AlignVCenter | Qt.AlignRight, value_text)
 
     def displayText(self, value, locale):
-        return ''
+        return ""
 
 
 class StateMeshItem(pg.PColorMeshItem):
@@ -418,7 +474,7 @@ class StateMeshItem(pg.PColorMeshItem):
         """
         if ev.exit:
             # If the mouse exits the item, emit -1 to indicate no state is hovered
-            if not hasattr(ev, '_scenePos'):
+            if not hasattr(ev, "_scenePos"):
                 self.stateIndex.emit(-1)
             else:
                 item = self.scene().itemAt(ev.scenePos(), QTransform())
@@ -487,12 +543,12 @@ class BpodWidget(pg.GraphicsLayoutWidget):
 
         # set rendering hint and layout options
         self.setRenderHints(QPainter.Antialiasing)
-        self.setBackground('white')
+        self.setBackground("white")
         self.centralWidget.setSpacing(0)
         self.centralWidget.setContentsMargins(0, 0, 0, 0)
 
         # define colormap for Bpod states
-        colormap = pg.colormap.get('glasbey_light', source='colorcet')
+        colormap = pg.colormap.get("glasbey_light", source="colorcet")
         colors = colormap.getLookupTable(0, 1, 256, alpha=True)
         colors[:, 3] = alpha
         self.colormap = pg.ColorMap(colormap.pos, colors)
@@ -500,16 +556,21 @@ class BpodWidget(pg.GraphicsLayoutWidget):
         # add title
         if title is not None:
             self.centralWidget.nextRow()
-            self.addLabel(title, size='11pt', col=1, color='k')
+            self.addLabel(title, size="11pt", col=1, color="k")
 
         # add digital channels
-        for channel in channels or ('BNC1', 'BNC2', 'Port1'):
+        for channel in channels or ("BNC1", "BNC2", "Port1"):
             self.addDigitalChannel(channel)
 
         # add x axis
         self.centralWidget.nextRow()
-        a = pg.AxisItem(orientation='bottom', textPen='k', linkView=list(self.viewBoxes.values())[0], parent=self.centralWidget)
-        a.setLabel(text='Time', units='s')
+        a = pg.AxisItem(
+            orientation="bottom",
+            textPen="k",
+            linkView=list(self.viewBoxes.values())[0],
+            parent=self.centralWidget,
+        )
+        a.setLabel(text="Time", units="s")
         a.enableAutoSIPrefix(True)
         self.centralWidget.addItem(a, col=1)
 
@@ -526,10 +587,10 @@ class BpodWidget(pg.GraphicsLayoutWidget):
         """
         label = channel if label is None else label
         self.centralWidget.nextRow()
-        self.labels[channel] = self.addLabel(label, col=0, color='k')
+        self.labels[channel] = self.addLabel(label, col=0, color="k")
         self.meshes[channel] = StateMeshItem(colorMap=self.colormap)
         self.meshes[channel].stateIndex.connect(self.showStateInfo)
-        self.plots[channel] = pg.PlotDataItem(pen='k', stepMode='right')
+        self.plots[channel] = pg.PlotDataItem(pen="k", stepMode="right")
         self.plots[channel].setSkipFiniteCheck(True)
         self.viewBoxes[channel] = self.addViewBox(col=1)
         self.viewBoxes[channel].addItem(self.meshes[channel])
@@ -564,20 +625,33 @@ class BpodWidget(pg.GraphicsLayoutWidget):
         if index < 0:
             self.window().statusBar().clearMessage()
         else:
-            self.window().statusBar().showMessage(f'State: {self.data.State.cat.categories[index]}')
+            self.window().statusBar().showMessage(
+                f"State: {self.data.State.cat.categories[index]}"
+            )
 
     def showTrial(self):
         """
         Display the trial data in the widget.
         This method updates the limits and plots for each digital channel.
         """
-        limits = self.data[self.data['Type'].isin(['TrialStart', 'TrialEnd'])]
+        limits = self.data[self.data["Type"].isin(["TrialStart", "TrialEnd"])]
         limits = limits.index.total_seconds()
-        self.limits = {'xMin': 0, 'xMax': limits[1] - limits[0], 'minXRange': 0.001, 'yMin': -0.2, 'yMax': 1.2}
+        self.limits = {
+            "xMin": 0,
+            "xMax": limits[1] - limits[0],
+            "minXRange": 0.001,
+            "yMin": -0.2,
+            "yMax": 1.2,
+        }
 
-        state_t0 = self.data[self.data.Type == 'StateStart']
-        state_t1 = self.data[self.data.Type == 'StateEnd']
-        mesh_x = np.append(state_t0.index.total_seconds(), state_t1.index[-1].total_seconds()) - limits[0]
+        state_t0 = self.data[self.data.Type == "StateStart"]
+        state_t1 = self.data[self.data.Type == "StateEnd"]
+        mesh_x = (
+            np.append(
+                state_t0.index.total_seconds(), state_t1.index[-1].total_seconds()
+            )
+            - limits[0]
+        )
         mesh_x = np.tile(mesh_x, (2, 1))
         mesh_y = np.zeros(mesh_x.shape) - 0.2
         mesh_y[1, :] = 1.2
@@ -585,7 +659,7 @@ class BpodWidget(pg.GraphicsLayoutWidget):
         mesh_z = mesh_z[np.newaxis, :]
 
         for channel in self.plots:
-            values = self.data.loc[self.data.Channel == channel, 'Value']
+            values = self.data.loc[self.data.Channel == channel, "Value"]
             plot_x = values.index.total_seconds().to_numpy() - limits[0]
             plot_y = values.to_numpy()
 
@@ -601,7 +675,9 @@ class BpodWidget(pg.GraphicsLayoutWidget):
             self.viewBoxes[channel].setLimits(**self.limits)
 
         list(self.viewBoxes.values())[0].setXRange(
-            self.data.index[0].total_seconds(), self.data.index[-1].total_seconds(), padding=0
+            self.data.index[0].total_seconds(),
+            self.data.index[-1].total_seconds(),
+            padding=0,
         )
 
     def updateXRange(self):
@@ -620,7 +696,7 @@ class OnlinePlotsModel(QObject):
     titleColorChanged = Signal(str)
     sessionStringAvailable = Signal(str)
     tableModel = TrialsTableModel()
-    sessionString = ''
+    sessionString = ""
     probability_set = DefaultSettings.PROBABILITY_SET
     contrast_set = DefaultSettings.CONTRAST_SET
     _trial_data = pd.DataFrame()
@@ -629,7 +705,9 @@ class OnlinePlotsModel(QObject):
     _current_trial = 0
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
-    def __init__(self, session: FilePath | DirectoryPath | UUID4, parent: QObject | None = None):
+    def __init__(
+        self, session: FilePath | DirectoryPath | UUID4, parent: QObject | None = None
+    ):
         super().__init__(parent=parent)
         is_live = False
 
@@ -638,63 +716,83 @@ class OnlinePlotsModel(QObject):
             one = ONE()
 
             # assert that session exists
-            session_exists = len(one.alyx.rest('sessions', 'list', id=session)) > 0
+            session_exists = len(one.alyx.rest("sessions", "list", id=session)) > 0
             if not session_exists:
-                raise ValueError(f'Could not find session with ID {session}')
+                raise ValueError(f"Could not find session with ID {session}")
 
             # load Task Data File
-            datasets = one.list_datasets(session, filename='*taskData.raw.jsonable')
+            datasets = one.list_datasets(session, filename="*taskData.raw.jsonable")
             if len(datasets) == 0:
-                raise ValueError(f'Could not find Task Data File for session {session}')
+                raise ValueError(f"Could not find Task Data File for session {session}")
             session = one.load_dataset(session, datasets[0], download_only=True)
 
             # load Task Settings File
-            datasets = one.list_datasets(session, filename='*_iblrig_taskSettings.raw.json')
+            datasets = one.list_datasets(
+                session, filename="*_iblrig_taskSettings.raw.json"
+            )
             if len(datasets) > 0:
                 one.load_dataset(session, datasets[0], download_only=True)
 
         # If session is a directory ...
         if session.is_dir():
-            if not session.name.startswith('raw_task_data'):
-                raise ValueError(f'Not a Raw Data Directory: {session}')
+            if not session.name.startswith("raw_task_data"):
+                raise ValueError(f"Not a Raw Data Directory: {session}")
             self.raw_data_folder = session
-            self.jsonable_file = self.raw_data_folder.joinpath('_iblrig_taskData.raw.jsonable')
-            self.settings_file = self.raw_data_folder.joinpath('_iblrig_taskSettings.raw.json')
+            self.jsonable_file = self.raw_data_folder.joinpath(
+                "_iblrig_taskData.raw.jsonable"
+            )
+            self.settings_file = self.raw_data_folder.joinpath(
+                "_iblrig_taskSettings.raw.json"
+            )
             if not self.jsonable_file.exists():
-                print('Waiting for data ...')
+                print("Waiting for data ...")
                 while not self.jsonable_file.exists():
                     time.sleep(0.2)
             is_live = True
 
         # If session is a file ...
         elif session.is_file():
-            if not session.name.endswith('.raw.jsonable'):
-                raise ValueError(f'Not a Task Data File: {session}')
+            if not session.name.endswith(".raw.jsonable"):
+                raise ValueError(f"Not a Task Data File: {session}")
             self.jsonable_file = session
             self.raw_data_folder = session.parent
-            self.settings_file = self.raw_data_folder.joinpath('_iblrig_taskSettings.raw.json')
+            self.settings_file = self.raw_data_folder.joinpath(
+                "_iblrig_taskSettings.raw.json"
+            )
 
         if self.settings_file.exists():
-            with self.settings_file.open('r') as f:
+            with self.settings_file.open("r") as f:
                 self.task_settings = json.load(f)
-            self.probability_set = [self.task_settings.get('PROBABILITY_LEFT')] + self.task_settings.get(
-                'BLOCK_PROBABILITY_SET', []
+            self.probability_set = [
+                self.task_settings.get("PROBABILITY_LEFT")
+            ] + self.task_settings.get("BLOCK_PROBABILITY_SET", [])
+            self.contrast_set = np.unique(
+                np.abs(self.task_settings.get("CONTRAST_SET"))
             )
-            self.contrast_set = np.unique(np.abs(self.task_settings.get('CONTRAST_SET')))
 
-        self.signed_contrasts = np.r_[-np.flipud(self.contrast_set[1:]), self.contrast_set]
+        self.signed_contrasts = np.r_[
+            -np.flipud(self.contrast_set[1:]), self.contrast_set
+        ]
         self.psychometrics = pd.DataFrame(
-            columns=['count', 'response_time', 'choice', 'response_time_std', 'choice_std'],
-            index=pd.MultiIndex.from_product([self.probability_set, self.signed_contrasts]),
+            columns=[
+                "count",
+                "response_time",
+                "choice",
+                "response_time_std",
+                "choice_std",
+            ],
+            index=pd.MultiIndex.from_product(
+                [self.probability_set, self.signed_contrasts]
+            ),
         )
-        self.psychometrics['count'] = 0
+        self.psychometrics["count"] = 0
         self.reward_amount = 0
         self._t0 = 0
         self._n_trials = 0
         self._n_trials_correct = 0
         self._n_trials_engaged = 0
         self._seconds_elapsed = 0
-        self.titleColor = ''
+        self.titleColor = ""
 
         # get session string in separate thread
         session_string_worker = Worker(self.getSessionString)
@@ -703,68 +801,90 @@ class OnlinePlotsModel(QObject):
         # read the jsonable file and instantiate a QFileSystemWatcher
         self.readJsonable(self.jsonable_file)
         if is_live:
-            self.jsonableWatcher = QFileSystemWatcher([str(self.jsonable_file)], parent=self)
+            self.jsonableWatcher = QFileSystemWatcher(
+                [str(self.jsonable_file)], parent=self
+            )
             self.jsonableWatcher.fileChanged.connect(self.readJsonable)
 
     @Slot(str)
     def readJsonable(self, _: str) -> None:
         # load jsonable data
-        trial_data, bpod_data = load_task_jsonable(self.jsonable_file, offset=self._jsonable_offset)
+        trial_data, bpod_data = load_task_jsonable(
+            self.jsonable_file, offset=self._jsonable_offset
+        )
         self._jsonable_offset = self.jsonable_file.stat().st_size
         self._trial_data = pd.concat([self._trial_data, trial_data])
         if len(self._bpod_data) == 0:
-            self._t0 = bpod_data[0]['Trial start timestamp']
+            self._t0 = bpod_data[0]["Trial start timestamp"]
         self._bpod_data.extend(bpod_data)
 
         # update data for trial history table
-        table = self._trial_data[['trial_num', 'position', 'contrast']].copy()
-        table.columns = ['Trial', 'Stimulus', 'Contrast']
-        table['Debias'] = self._trial_data.get('debias_trial', False)
-        table['Outcome'] = self._trial_data.apply(
-            lambda row: 'no-go'
-            if (row.get('response_side') == 0 or row.get('response_time') > 60)
-            else ('correct' if row.get('trial_correct') else 'error'),
+        table = self._trial_data[["trial_num", "position", "contrast"]].copy()
+        table.columns = ["Trial", "Stimulus", "Contrast"]
+        table["Debias"] = self._trial_data.get("debias_trial", False)
+        table["Outcome"] = self._trial_data.apply(
+            lambda row: (
+                "no-go"
+                if (row.get("response_side") == 0 or row.get("response_time") > 60)
+                else ("correct" if row.get("trial_correct") else "error")
+            ),
             axis=1,
         )
-        table['Response Time / s'] = self._trial_data.apply(
-            lambda row: np.NAN if row.get('response_side') == 0 else row.get('response_time'), axis=1
+        table["Response Time / s"] = self._trial_data.apply(
+            lambda row: (
+                np.NAN if row.get("response_side") == 0 else row.get("response_time")
+            ),
+            axis=1,
         )
         self.tableModel.setDataFrame(table)
 
         # update some counters
         self._n_trials += len(trial_data)
         if len(bpod_data) > 1:
-            seconds_elapsed = np.array([trial['Trial end timestamp'] for trial in bpod_data]) - self._t0
+            seconds_elapsed = (
+                np.array([trial["Trial end timestamp"] for trial in bpod_data])
+                - self._t0
+            )
             self._seconds_elapsed = seconds_elapsed[-1]
-            self._n_trials_engaged += (seconds_elapsed <= EngagedCriterion.SECONDS).sum()
+            self._n_trials_engaged += (
+                seconds_elapsed <= EngagedCriterion.SECONDS
+            ).sum()
         else:
-            self._seconds_elapsed = bpod_data[-1]['Trial end timestamp'] - self._t0
+            self._seconds_elapsed = bpod_data[-1]["Trial end timestamp"] - self._t0
             self._n_trials_engaged += self._seconds_elapsed <= EngagedCriterion.SECONDS
-        self._n_trials_correct += trial_data['trial_correct'].sum()
-        self.reward_amount += trial_data['reward_amount'].sum()
+        self._n_trials_correct += trial_data["trial_correct"].sum()
+        self.reward_amount += trial_data["reward_amount"].sum()
 
         # update psychometrics
-        trial_data['signed_contrast'] = np.sign(trial_data['position']) * trial_data['contrast']
+        trial_data["signed_contrast"] = (
+            np.sign(trial_data["position"]) * trial_data["contrast"]
+        )
         for _, row in trial_data.iterrows():
-            if row.get('response_side') == 0:
+            if row.get("response_side") == 0:
                 continue
             choice = row.position > 0 if row.trial_correct else row.position < 0
             indexer = (row.stim_probability_left, row.signed_contrast)
             if indexer not in self.psychometrics.index:
                 self.psychometrics.loc[indexer, :] = np.nan
-                self.psychometrics.loc[indexer, 'count'] = 0
-            self.psychometrics.loc[indexer, 'count'] += 1
-            self.psychometrics.loc[indexer, 'response_time'], self.psychometrics.loc[indexer, 'response_time_std'] = online_std(
+                self.psychometrics.loc[indexer, "count"] = 0
+            self.psychometrics.loc[indexer, "count"] += 1
+            (
+                self.psychometrics.loc[indexer, "response_time"],
+                self.psychometrics.loc[indexer, "response_time_std"],
+            ) = online_std(
                 new_sample=row.response_time,
-                new_count=self.psychometrics.loc[indexer, 'count'],
-                old_mean=self.psychometrics.loc[indexer, 'response_time'],
-                old_std=self.psychometrics.loc[indexer, 'response_time_std'],
+                new_count=self.psychometrics.loc[indexer, "count"],
+                old_mean=self.psychometrics.loc[indexer, "response_time"],
+                old_std=self.psychometrics.loc[indexer, "response_time_std"],
             )
-            self.psychometrics.loc[indexer, 'choice'], self.psychometrics.loc[indexer, 'choice_std'] = online_std(
+            (
+                self.psychometrics.loc[indexer, "choice"],
+                self.psychometrics.loc[indexer, "choice_std"],
+            ) = online_std(
                 new_sample=float(choice),
-                new_count=self.psychometrics.loc[indexer, 'count'],
-                old_mean=self.psychometrics.loc[indexer, 'choice'],
-                old_std=self.psychometrics.loc[indexer, 'choice_std'],
+                new_count=self.psychometrics.loc[indexer, "count"],
+                old_mean=self.psychometrics.loc[indexer, "choice"],
+                old_std=self.psychometrics.loc[indexer, "choice_std"],
             )
 
         self.compute_end_session_criteria()
@@ -785,7 +905,9 @@ class OnlinePlotsModel(QObject):
             color = Colors.GREEN
 
         # the subject reaction time over the last 20 trials is more than 5 times greater than the overall reaction time
-        elif (self._trial_data['response_time'].median() * 5) < self._trial_data['response_time'][-20:].median():
+        elif (self._trial_data["response_time"].median() * 5) < self._trial_data[
+            "response_time"
+        ][-20:].median():
             color = Colors.YELLOW
 
         # 90 > time > 45 min and subject's avg response time hasn't significantly decreased
@@ -797,15 +919,19 @@ class OnlinePlotsModel(QObject):
             self.titleColorChanged.emit(color)
 
     def getSessionString(self) -> None:
-        if not hasattr(self, 'task_settings'):
+        if not hasattr(self, "task_settings"):
             return
         training_info, _ = get_subject_training_info(
-            subject_name=self.task_settings.get('SUBJECT_NAME'),
-            task_name=self.task_settings.get('PYBPOD_PROTOCOL'),
-            lab=self.task_settings.get('ALYX_LAB'),
+            subject_name=self.task_settings.get("SUBJECT_NAME"),
+            task_name=self.task_settings.get("PYBPOD_PROTOCOL"),
+            lab=self.task_settings.get("ALYX_LAB"),
         )
-        use_adaptive_reward = self.task_settings.get('ADAPTIVE_REWARD', False)
-        reward_amount = training_info['adaptive_reward'] if use_adaptive_reward else self.task_settings.get('REWARD_AMOUNT_UL')
+        use_adaptive_reward = self.task_settings.get("ADAPTIVE_REWARD", False)
+        reward_amount = (
+            training_info["adaptive_reward"]
+            if use_adaptive_reward
+            else self.task_settings.get("REWARD_AMOUNT_UL")
+        )
         self.sessionString = (
             f'Subject: {self.task_settings.get("SUBJECT_NAME")}  ·  '
             f'Weight: {self.task_settings.get("SUBJECT_WEIGHT"):0.1f} g  ·  '
@@ -831,58 +957,69 @@ class OnlinePlotsModel(QObject):
     def timeElapsed(self) -> datetime.timedelta:
         if self._n_trials == 0:
             return datetime.timedelta(seconds=0)
-        t1 = self._bpod_data[self._current_trial]['Trial end timestamp']
+        t1 = self._bpod_data[self._current_trial]["Trial end timestamp"]
         return datetime.timedelta(seconds=t1 - self._t0)
 
     def percentCorrect(self) -> float:
-        return self._n_trials_correct / (self._n_trials if self._n_trials > 0 else np.nan) * 100
-    
+        return (
+            self._n_trials_correct
+            / (self._n_trials if self._n_trials > 0 else np.nan)
+            * 100
+        )
+
     # helper function
     def _nTrialsUpTo(self, trial: int) -> int:
         return trial + 1
-    
+
     def mapProbabilityUpToTrial(self, trial: int):
-        return self._trial_data["map_probability"][:self._nTrialsUpTo(trial)]
-    
+        return self._trial_data["map_probability"][: self._nTrialsUpTo(trial)]
+
     def blockBoundariesUpToTrial(self, trial: int, block_length: int):
         max_block = self._nTrialsUpTo(trial) // block_length
         return [(i * block_length - 1) for i in range(1, max_block + 1)]
-    
+
     def percentCorrectUpToTrial(self, trial: int) -> float:
-        return np.sum(self._trial_data["trial_correct"][:self._nTrialsUpTo(trial)]) / self._nTrialsUpTo(trial) * 100
-    
+        return (
+            np.sum(self._trial_data["trial_correct"][: self._nTrialsUpTo(trial)])
+            / self._nTrialsUpTo(trial)
+            * 100
+        )
+
     def rewardUpToTrial(self, trial: int) -> float:
-        return np.sum(self._trial_data["reward_amount"][:self._nTrialsUpTo(trial)])
+        return np.sum(self._trial_data["reward_amount"][: self._nTrialsUpTo(trial)])
 
     def bpod_data(self, trial: int) -> pd.DataFrame:
         return bpod_trial_data_to_dataframe(self._bpod_data[trial], trial)
 
     def getTitle(self) -> str:
-        protocol = getattr(self, 'task_settings', dict()).get('PYBPOD_PROTOCOL', 'unknown task protocol')
-        spacer = '  ·  '
-        t_elapsed = str(self.timeElapsed()).split('.')[0]
+        protocol = getattr(self, "task_settings", dict()).get(
+            "PYBPOD_PROTOCOL", "unknown task protocol"
+        )
+        spacer = "  ·  "
+        t_elapsed = str(self.timeElapsed()).split(".")[0]
         block_side = self._trial_data.iloc[self._current_trial]["block_side"]
-        return f'{protocol}{spacer}Trial {self._current_trial}{spacer}Elapsed Time: {t_elapsed}{spacer}Current Block Side: {block_side}'
+        return f"{protocol}{spacer}Trial {self._current_trial}{spacer}Elapsed Time: {t_elapsed}{spacer}Current Block Side: {block_side}"
 
 
 class OnlinePlotsView(QMainWindow):
-    colormap = pg.colormap.get('tab10', source='matplotlib')
+    colormap = pg.colormap.get("tab10", source="matplotlib")
 
-
-    def __init__(self, session: FilePath | DirectoryPath | UUID4, parent: QObject | None = None):
+    def __init__(
+        self, session: FilePath | DirectoryPath | UUID4, parent: QObject | None = None
+    ):
         super().__init__(parent)
         pg.setConfigOptions(antialias=True)
         self.model = OnlinePlotsModel(session, self)
 
         self.statusBar().clearMessage()
-        self.setWindowTitle('Online Plots')
+        self.setWindowTitle("Online Plots")
         self.setMinimumSize(1024, 771)
-        self.setWindowIcon(QIcon(QPixmap(':/images/iblrig_logo')))
+        self.setWindowIcon(QIcon(QPixmap(":/images/iblrig_logo")))
 
         # the frame that contains all the plots
         frame = QFrame(self)
         frame.setFrameStyle(QFrame.StyledPanel)
-        frame.setStyleSheet('background-color: rgb(255, 255, 255);')
+        frame.setStyleSheet("background-color: rgb(255, 255, 255);")
         self.setCentralWidget(frame)
 
         # use a grid layout to organize the different widgets
@@ -924,98 +1061,114 @@ class OnlinePlotsView(QMainWindow):
         layout.addWidget(self.trials, 1, 0, 2, 1)
 
         # psychometric function
-        self.psychometricWidget = FunctionWidget(parent=self, colors=self.colormap, probabilities=self.model.probability_set)
-        self.psychometricWidget.plotItem.setTitle('Psychometric Function', color='k')
-        self.psychometricWidget.plotItem.getAxis('left').setLabel('Rightward Choices (%)')
-        self.psychometricWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
+        self.psychometricWidget = FunctionWidget(
+            parent=self, colors=self.colormap, probabilities=self.model.probability_set
+        )
+        self.psychometricWidget.plotItem.setTitle("Psychometric Function", color="k")
+        self.psychometricWidget.plotItem.getAxis("left").setLabel(
+            "Rightward Choices (%)"
+        )
+        self.psychometricWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
         self.psychometricWidget.plotItem.setYRange(0, 1, padding=0.05)
         self.psychometricWidget.plotItem.hoverEvent = self.mouseOverFunction
-        self.psychometricWidget.setVisible(False) # don't delete widget, just hide it
+        self.psychometricWidget.setVisible(False)  # don't delete widget, just hide it
         layout.addWidget(self.psychometricWidget, 1, 1, 1, 1)
 
         # chronometric function
-        self.chronometricWidget = FunctionWidget(parent=self, colors=self.colormap, probabilities=self.model.probability_set)
-        self.chronometricWidget.plotItem.setTitle('Chronometric Function', color='k')
-        self.chronometricWidget.plotItem.getAxis('left').setLabel('Response Time (s)')
+        self.chronometricWidget = FunctionWidget(
+            parent=self, colors=self.colormap, probabilities=self.model.probability_set
+        )
+        self.chronometricWidget.plotItem.setTitle("Chronometric Function", color="k")
+        self.chronometricWidget.plotItem.getAxis("left").setLabel("Response Time (s)")
         self.chronometricWidget.plotItem.setLogMode(x=False, y=True)
         self.chronometricWidget.plotItem.setXLink(self.psychometricWidget.plotItem)
         self.chronometricWidget.plotItem.setXRange(-1, 1, padding=0.025)
         self.chronometricWidget.plotItem.setYRange(-1, 2, padding=0.05)
         self.chronometricWidget.plotItem.hoverEvent = self.mouseOverFunction
-        self.chronometricWidget.setVisible(False) # don't delete widget, just hide it
+        self.chronometricWidget.setVisible(False)  # don't delete widget, just hide it
         layout.addWidget(self.chronometricWidget, 2, 1, 1, 1)
 
         # Bayesian strategy analysis continuous update on each trial
-        self.block_length = self.model.task_settings.get('BLOCK_LENGTH')
+        self.block_length = self.model.task_settings.get("BLOCK_LENGTH")
         self.bsa_block_lines = []
         self.bsaWidgetcont = PlotWidget(parent=self)
-        self.bsaWidgetcont.plotItem.setTitle('Bayesian Strategy Analysis - Correct Choice', color='k')
-        self.bsaWidgetcont.plotItem.getAxis('left').setLabel('P(Strategy)')
-        self.bsaWidgetcont.plotItem.getAxis('bottom').setLabel('Trial')
-        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
+        self.bsaWidgetcont.plotItem.setTitle(
+            "Bayesian Strategy Analysis - Correct Choice", color="k"
+        )
+        self.bsaWidgetcont.plotItem.getAxis("left").setLabel("P(Strategy)")
+        self.bsaWidgetcont.plotItem.getAxis("bottom").setLabel("Trial")
+        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
         self.bsaWidgetcont.plotItem.setYRange(0, 1, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurvecont = self.bsaWidgetcont.plot(
             [],
             [],
-            pen=pg.mkPen('k', width=2),
-            symbol='o',
+            pen=pg.mkPen("k", width=2),
+            symbol="o",
             symbolSize=3,
-            symbolBrush='k'
+            symbolBrush="k",
         )
         self.bsaWidgetcont.plotItem.hoverEvent = self.mouseOverFunction
-        layout.addWidget(self.bsaWidgetcont, 1, 1, 1, 1) # same place as psychometric function
+        layout.addWidget(
+            self.bsaWidgetcont, 1, 1, 1, 1
+        )  # same place as psychometric function
         self.bsaWidgetcont.setDefaultPadding(0.01)
 
         # Bayesian strategy analysis full trial list
         self.bsaWidget = PlotWidget(parent=self)
-        self.bsaWidget.plotItem.setTitle('Bayesian Strategy Analysis - Correct Choice', color='k')
-        self.bsaWidget.plotItem.getAxis('left').setLabel('P(Strategy)')
-        self.bsaWidget.plotItem.getAxis('bottom').setLabel('Trial')
-        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, 'black'))
+        self.bsaWidget.plotItem.setTitle(
+            "Bayesian Strategy Analysis - Correct Choice", color="k"
+        )
+        self.bsaWidget.plotItem.getAxis("left").setLabel("P(Strategy)")
+        self.bsaWidget.plotItem.getAxis("bottom").setLabel("Trial")
+        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
         self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
         self.bsaWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurve = self.bsaWidget.plot(
             [],
             [],
-            pen=pg.mkPen('k', width=2),
-            symbol='o',
+            pen=pg.mkPen("k", width=2),
+            symbol="o",
             symbolSize=3,
-            symbolBrush='k'
+            symbolBrush="k",
         )
         # plot block lines
         block_lines = np.arange(self.block_length - 1, NTRIALS_INIT, self.block_length)
         for line in block_lines:
             vline = pg.InfiniteLine(
-                pos=line,
-                angle=90,                # vertical
-                pen=pg.mkPen("lightgrey", width=1)
+                pos=line, angle=90, pen=pg.mkPen("lightgrey", width=1)  # vertical
             )
-            vline.setZValue(-10)        # send behind data
+            vline.setZValue(-10)  # send behind data
             self.bsaWidget.addItem(vline)
         self.bsaWidget.plotItem.hoverEvent = self.mouseOverFunction
-        layout.addWidget(self.bsaWidget, 2, 1, 1, 1) # same place as chronometric function
+        layout.addWidget(
+            self.bsaWidget, 2, 1, 1, 1
+        )  # same place as chronometric function
 
         # performance chart
-        self.performanceWidget = SingleBarChartWidget(parent=self, textFormat='{:0.1f} %')
+        self.performanceWidget = SingleBarChartWidget(
+            parent=self, textFormat="{:0.1f} %"
+        )
         self.performanceWidget.setMinimumWidth(155)
-        self.performanceWidget.plotItem.setTitle('Performance', color='k')
-        self.performanceWidget.plotItem.getAxis('left').setLabel('Correct Choices (%)')
+        self.performanceWidget.plotItem.setTitle("Performance", color="k")
+        self.performanceWidget.plotItem.getAxis("left").setLabel("Correct Choices (%)")
         self.performanceWidget.plotItem.setYRange(0, 105, padding=0)
         self.performanceWidget.plotItem.hoverEvent = self.mouseOverBarChart
         layout.addWidget(self.performanceWidget, 1, 2, 1, 1)
 
         # reward chart
-        self.rewardWidget = SingleBarChartWidget(parent=self, barColor=(64, 64, 255), textFormat='{:0.1f} μl')
-        self.rewardWidget.plotItem.setTitle('Reward Amount', color='k')
-        self.rewardWidget.plotItem.getAxis('left').setLabel('Total Reward Volume (μl)')
+        self.rewardWidget = SingleBarChartWidget(
+            parent=self, barColor=(64, 64, 255), textFormat="{:0.1f} μl"
+        )
+        self.rewardWidget.plotItem.setTitle("Reward Amount", color="k")
+        self.rewardWidget.plotItem.getAxis("left").setLabel("Total Reward Volume (μl)")
         self.rewardWidget.plotItem.setYRange(0, 1050, padding=0)
         self.rewardWidget.plotItem.hoverEvent = self.mouseOverBarChart
         layout.addWidget(self.rewardWidget, 2, 2, 1, 1)
 
         # bpod data
-        self.bpodWidget = BpodWidget(self, title='Bpod States and Input Channels')
+        self.bpodWidget = BpodWidget(self, title="Bpod States and Input Channels")
         self.bpodWidget.setMinimumHeight(130)
         self.bpodWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addWidget(self.bpodWidget, 3, 0, 1, 3)
@@ -1028,8 +1181,8 @@ class OnlinePlotsView(QMainWindow):
 
         # manage settings
         self.settings = QSettings()
-        self.move(self.settings.value('pos', self.pos(), QPoint))
-        self.resize(self.settings.value('size', self.size(), QSize))
+        self.move(self.settings.value("pos", self.pos(), QPoint))
+        self.resize(self.settings.value("size", self.size(), QSize))
 
     @Slot(str)
     def setTitle(self, title: str):
@@ -1038,7 +1191,7 @@ class OnlinePlotsView(QMainWindow):
     @Slot(str)
     def setTitleBackground(self, color: str):
         """Set the background color of the title area to a gradient of the specified color."""
-        self.titleFrame.setStyleSheet(f'QFrame {{ background-color: {color}; }}')
+        self.titleFrame.setStyleSheet(f"QFrame {{ background-color: {color}; }}")
 
     def mouseOverBarChart(self, event):
         statusbar = self.window().statusBar()
@@ -1046,9 +1199,13 @@ class OnlinePlotsView(QMainWindow):
             statusbar.clearMessage()
         elif event.currentItem.vb.sceneBoundingRect().contains(event.scenePos()):
             if event.currentItem == self.performanceWidget.plotItem:
-                statusbar.showMessage(f'Performance: {self.model.percentCorrect():0.1f}% correct choices')
+                statusbar.showMessage(
+                    f"Performance: {self.model.percentCorrect():0.1f}% correct choices"
+                )
             else:
-                statusbar.showMessage(f'Total reward volume: {self.model.reward_amount:0.1f} μl')
+                statusbar.showMessage(
+                    f"Total reward volume: {self.model.reward_amount:0.1f} μl"
+                )
 
     def mouseOverFunction(self, event):
         statusbar = self.window().statusBar()
@@ -1056,11 +1213,11 @@ class OnlinePlotsView(QMainWindow):
             statusbar.clearMessage()
         elif event.currentItem.vb.sceneBoundingRect().contains(event.scenePos()):
             if event.currentItem == self.psychometricWidget.plotItem:
-                statusbar.showMessage('Psychometric Function, SEM')
+                statusbar.showMessage("Psychometric Function, SEM")
             elif event.currentItem == self.chronometricWidget.plotItem:
-                statusbar.showMessage('Chronometric Function, SEM')
+                statusbar.showMessage("Chronometric Function, SEM")
             else:
-                statusbar.showMessage('Bayesian Strategy Analysis, Correct Choice')
+                statusbar.showMessage("Bayesian Strategy Analysis, Correct Choice")
 
     @Slot(int)
     def updatePlots(self, trial: int):
@@ -1084,7 +1241,7 @@ class OnlinePlotsView(QMainWindow):
             data = self.model.psychometrics.loc[p].dropna(axis=0).astype(float)
             x = data.index.to_numpy()
             y = data.choice.to_numpy()
-            sqrt_n = np.sqrt(data['count'].to_numpy())
+            sqrt_n = np.sqrt(data["count"].to_numpy())
             e = data.choice_std.to_numpy() / sqrt_n
             self.psychometricWidget.upperCurves[p].setData(x=x, y=y + e)
             self.psychometricWidget.lowerCurves[p].setData(x=x, y=y - e)
@@ -1092,7 +1249,9 @@ class OnlinePlotsView(QMainWindow):
             y = data.response_time.to_numpy()
             e = data.response_time_std.to_numpy() / sqrt_n
             self.chronometricWidget.upperCurves[p].setData(x=x, y=y + e)
-            self.chronometricWidget.lowerCurves[p].setData(x=x, y=np.clip(y - e, np.finfo(float).tiny, None))
+            self.chronometricWidget.lowerCurves[p].setData(
+                x=x, y=np.clip(y - e, np.finfo(float).tiny, None)
+            )
             self.chronometricWidget.plotDataItems[p].setData(x=x, y=y)
 
     def _updatePerformance(self, trial: int):
@@ -1119,16 +1278,11 @@ class OnlinePlotsView(QMainWindow):
             self.bsaWidgetcont.removeItem(line)
         self.bsa_block_lines.clear()
 
-        boundaries = self.model.blockBoundariesUpToTrial(
-            trial,
-            self.block_length
-        )
+        boundaries = self.model.blockBoundariesUpToTrial(trial, self.block_length)
 
         for pos in boundaries:
             vline = pg.InfiniteLine(
-                pos=pos,
-                angle=90,
-                pen=pg.mkPen("lightgrey", width=1)
+                pos=pos, angle=90, pen=pg.mkPen("lightgrey", width=1)
             )
             vline.setZValue(-10)
             self.bsaWidgetcont.addItem(vline)
@@ -1152,38 +1306,49 @@ class OnlinePlotsView(QMainWindow):
         event.accept()
 
     def moveEvent(self, event):
-        if hasattr(self, 'settings'):
-            self.settings.setValue('pos', self.pos())
+        if hasattr(self, "settings"):
+            self.settings.setValue("pos", self.pos())
         super().moveEvent(event)
 
     def resizeEvent(self, event):
-        if hasattr(self, 'settings'):
-            self.settings.setValue('size', self.size())
+        if hasattr(self, "settings"):
+            self.settings.setValue("size", self.size())
         super().resizeEvent(event)
 
 
 def online_plots_cli(*args):
     sys.argv.extend([str(arg) for arg in args])
 
-    class CLISettings(BaseSettings, cli_parse_args=True, cli_enforce_required=False, cli_avoid_json=True):
+    class CLISettings(
+        BaseSettings,
+        cli_parse_args=True,
+        cli_enforce_required=False,
+        cli_avoid_json=True,
+    ):
         """Display a Session's Online Plot."""
 
-        session: CliPositionalArg[FilePath | DirectoryPath | UUID4] = Field(description="a session's Task Data File or eID")
+        session: CliPositionalArg[FilePath | DirectoryPath | UUID4] = Field(
+            description="a session's Task Data File or eID"
+        )
 
     # set app information
-    QCoreApplication.setOrganizationName('International Brain Laboratory')
-    QCoreApplication.setOrganizationDomain('internationalbrainlab.org')
-    QCoreApplication.setApplicationName('IBLRIG Online Plots')
-    if os.name == 'nt':
-        app_id = f'IBL.iblrig.online_plots.{iblrig_version}'
+    QCoreApplication.setOrganizationName("International Brain Laboratory")
+    QCoreApplication.setOrganizationDomain("internationalbrainlab.org")
+    QCoreApplication.setApplicationName("IBLRIG Online Plots")
+    if os.name == "nt":
+        app_id = f"IBL.iblrig.online_plots.{iblrig_version}"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
     app = QApplication([])
 
     if len(sys.argv) < 2:
-        local_subjects_folder = str(get_local_and_remote_paths()['local_subjects_folder'])
+        local_subjects_folder = str(
+            get_local_and_remote_paths()["local_subjects_folder"]
+        )
         session, _ = QFileDialog.getOpenFileName(
-            caption='Select Task Data File', filter='Task Data (*.raw.jsonable)', directory=local_subjects_folder
+            caption="Select Task Data File",
+            filter="Task Data (*.raw.jsonable)",
+            directory=local_subjects_folder,
         )
         if len(session) == 0:
             return
@@ -1195,5 +1360,5 @@ def online_plots_cli(*args):
     sys.exit(app.exec())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     online_plots_cli()
