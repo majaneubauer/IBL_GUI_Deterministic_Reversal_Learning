@@ -33,6 +33,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
     block_side: int  # -1 for left or +1 for right
+    stim_end_position: int
     alpha: float
     beta: float
     map_probability: float
@@ -190,8 +191,12 @@ class Session(ActiveChoiceWorldSession):
             pleft=self.task_params.PROBABILITY_LEFT
         )  # no need to change anything here, because stimulus position is [0, 0]
 
+    def draw_next_trial_info(self, *args, **kwargs):
         # log block side
         self.trials_table.at[self.trial_num, "block_side"] = self.block_side
+        # add stim end position to trials table
+        self.trials_table.at[self.trial_num, 'stim_end_position'] = self.correct_end_position
+        super().draw_next_trial_info()
 
     def get_state_machine_trial(self, i):
         # we define the trial number here for subclasses that may need it
