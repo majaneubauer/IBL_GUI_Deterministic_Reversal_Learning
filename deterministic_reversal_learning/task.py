@@ -50,7 +50,7 @@ class Session(ActiveChoiceWorldSession):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
-        self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory()
+        self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent
         # add block state
         self.block_side = int(
             np.random.choice(
