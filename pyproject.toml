@@ -8,11 +8,11 @@ readme = "README.md"
 license = {text = "MIT"}
 
 [project.entry-points."iblrig.plugins"]
-task_drl = "deterministic_reversal_learning.task:Session"
-task_hab_drl = "habituation_deterministic_reversal_learning.task:Session"
+task_drl = "drl_tasks.deterministic_reversal_learning.task:Session"
+task_hab_drl = "drl_tasks.habituation_deterministic_reversal_learning.task:Session"
 
 [project.scripts]
-view_session            = "deterministic_reversal_learning.online_plots:online_plots_cli"
+view_session            = "online_plots:online_plots_cli"
 
 [tool.setuptools.packages]
 find = {} 
