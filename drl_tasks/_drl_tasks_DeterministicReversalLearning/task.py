@@ -1,28 +1,9 @@
 import logging
 from pathlib import Path
 import yaml
-import iblrig
-from iblrig.hifi import HiFi
-import numpy as np
-from typing import Any
-from re import split as re_split
-import matplotlib.pyplot as plt
-from scipy.stats import beta
-import pyqtgraph as pg
-from qtpy.QtWidgets import QApplication
-from qtpy.QtCore import QTimer
-import pyqtgraph as pg
-from qtpy.QtWidgets import QWidget, QVBoxLayout
-from iblrig.hardware import RotaryEncoderModule
-from iblrig.gui.online_plots import OnlinePlotsView
-
-from iblrig.base_choice_world import (
-    ActiveChoiceWorldSession,
-    ActiveChoiceWorldTrialData,
-)
 from iblrig.misc import get_task_arguments
 
-from drl_tasks.DRL import (
+from drl_tasks.deterministic_reversal_learning import (
     DeterministicReversalLearningSession,
 )
 

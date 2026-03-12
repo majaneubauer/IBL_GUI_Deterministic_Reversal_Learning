@@ -1,22 +1,10 @@
 import logging
 from pathlib import Path
 import yaml
-import iblrig
-from iblrig.hifi import HiFi
-import numpy as np
-from iblrig.hardware import RotaryEncoderModule
-from pybpodapi.protocol import StateMachine
-from pydantic import NonNegativeFloat
-
-from iblrig.base_choice_world import (
-    ChoiceWorldSession,
-    ChoiceWorldTrialData,
-)
 from iblrig.misc import get_task_arguments
 
-from iblrig.base_tasks import OSCClient
 
-from drl_tasks.DRL import (
+from drl_tasks.deterministic_reversal_learning import (
     HabituationDeterministicReversalLearningSession,
 )
 

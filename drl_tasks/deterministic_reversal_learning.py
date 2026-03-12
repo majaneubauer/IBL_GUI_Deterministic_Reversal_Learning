@@ -24,45 +24,7 @@ from iblrig.base_tasks import OSCClient
 
 log = logging.getLogger(__name__)
 
-
-class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
-    """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
-
-    block_side: int  # -1 for left or +1 for right
-    stim_end_position: int
-    alpha: float
-    beta: float
-    map_probability: float
-    precision: float
-    success_total: float
-    failure_total: float
-
-
-class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
-    protocol_name = (
-        "DeterministicReversalLearning"  # here defined how it shows up in GUI
-    )
-    TrialDataModel = DeterministicReversalLearningTrialData
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # to help bonsai find Gabor2D_MN.bonsai file
-        self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-        # add block state
-        self.block_side = int(
-            np.random.choice(
-                self.task_params.BLOCK_SIDES,
-                p=[
-                    self.task_params.PROBABILITY_LEFT,
-                    1 - self.task_params.PROBABILITY_LEFT,
-                ],
-            )
-        )  # -1 = left, +1 = right
-        self.block_length = self.task_params.BLOCK_LENGTH
-        self.block_trial_counter = (
-            -1
-        )  # needs to be -1 and not 0 for next_trial condition to work
-
+class DeterministicReversalLearningBaseSession:
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
         super().init_mixin_sound()
@@ -144,6 +106,46 @@ class DeterministicReversalLearningSession(ActiveChoiceWorldSession):
             thresholds_deg,
             self.stimulus_gain,
         )
+
+
+
+class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
+    """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
+
+    block_side: int  # -1 for left or +1 for right
+    stim_end_position: int
+    alpha: float
+    beta: float
+    map_probability: float
+    precision: float
+    success_total: float
+    failure_total: float
+
+
+class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSession, ActiveChoiceWorldSession):
+    protocol_name = (
+        "DeterministicReversalLearning"  # here defined how it shows up in GUI
+    )
+    TrialDataModel = DeterministicReversalLearningTrialData
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # to help bonsai find Gabor2D_MN.bonsai file
+        self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
+        # add block state
+        self.block_side = int(
+            np.random.choice(
+                self.task_params.BLOCK_SIDES,
+                p=[
+                    self.task_params.PROBABILITY_LEFT,
+                    1 - self.task_params.PROBABILITY_LEFT,
+                ],
+            )
+        )  # -1 = left, +1 = right
+        self.block_length = self.task_params.BLOCK_LENGTH
+        self.block_trial_counter = (
+            -1
+        )  # needs to be -1 and not 0 for next_trial condition to work
 
     @property
     def correct_end_position(self):
@@ -591,7 +593,7 @@ class ExtendedOSCClient(OSCClient):
         'stim_end_position': dict(mess='/m', type=int),
     }
 
-class HabituationDeterministicReversalLearningSession(ChoiceWorldSession):
+class HabituationDeterministicReversalLearningSession(DeterministicReversalLearningBaseSession, ChoiceWorldSession):
     protocol_name = (
         "HabituationDeterministicReversalLearning"  # here defined how it shows up in GUI
     )
@@ -602,87 +604,6 @@ class HabituationDeterministicReversalLearningSession(ChoiceWorldSession):
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
 
-    def init_mixin_sound(self):
-        # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
-        super().init_mixin_sound()
-        # determine the amp_gain_factor like it is done in the original method
-        if (
-            self.hardware_settings.device_sound.OUTPUT == "hifi"
-            and self.hardware_settings.device_sound.AMP_TYPE == "AMP2X15"
-        ):
-            amp_gain_factor = 0.25
-        else:
-            amp_gain_factor = 1.0
-        self.task_params.INSTRUCTIVE_TONE_AMPLITUDE *= (
-            amp_gain_factor  # TODO is this a bug, or intentional?
-        )
-        # create instructive sound
-        self.sound["INSTRUCTIVE_TONE"] = iblrig.sound.make_sound(
-            rate=self.sound["samplerate"],
-            frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
-            duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
-            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE
-            * amp_gain_factor,  # TODO is this a bug, or intentional?
-            fade=0.01,
-            chans=self.sound["channels"],
-        )
-
-    def start_mixin_sound(self):
-        super().start_mixin_sound()
-        output_type = self.hardware_settings.device_sound["OUTPUT"]
-        match output_type:
-            case "hifi":
-                module = self.bpod.get_module("^HiFi")
-                hifi = HiFi(
-                    port=self.hardware_settings.device_sound.COM_SOUND,
-                    sampling_rate_hz=self.sound["samplerate"],
-                )
-                # Load the three buffers
-                hifi.load(
-                    index=self.task_params.GO_TONE_IDX, data=self.sound["GO_TONE"]
-                )
-                hifi.load(
-                    index=self.task_params.INSTRUCTIVE_TONE_IDX,
-                    data=self.sound["INSTRUCTIVE_TONE"],
-                )
-                hifi.load(
-                    index=self.task_params.WHITE_NOISE_IDX,
-                    data=self.sound["WHITE_NOISE"],
-                )
-                hifi.push()
-                hifi.close()
-                # standard two actions
-                self.bpod.define_harp_sounds_actions(
-                    module=module,
-                    go_tone_index=self.task_params.GO_TONE_IDX,
-                    noise_index=self.task_params.WHITE_NOISE_IDX,
-                )
-                # add instructive tone manually
-                module_port = f"Serial{module.serial_port}"
-                self.bpod.actions.update(
-                    {
-                        "play_instructive_tone": (
-                            module_port,
-                            self.bpod._define_message(
-                                module,
-                                [ord("P"), self.task_params.INSTRUCTIVE_TONE_IDX],
-                            ),
-                        ),
-                    }
-                )
-        log.info(
-            f"Sound module loaded: OK: {self.hardware_settings.device_sound['OUTPUT']}"
-        )
-
-    def init_mixin_rotary_encoder(self):
-        thresholds_deg = (
-            self.task_params.STIM_END_POSITIONS + self.task_params.QUIESCENCE_THRESHOLDS
-        )  # STIM_POSITIONS does not need to be in here
-        self.device_rotary_encoder = RotaryEncoderModule(
-            self.hardware_settings.device_rotary_encoder,
-            thresholds_deg,
-            self.stimulus_gain,
-        )
 
     def start_mixin_bpod(self):
         super().start_mixin_bpod()
