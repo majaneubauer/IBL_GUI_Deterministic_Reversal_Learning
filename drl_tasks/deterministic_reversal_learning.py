@@ -590,7 +590,7 @@ class HabituationDeterministicReversalLearningTrialData(ChoiceWorldTrialData):
 class ExtendedOSCClient(OSCClient):
     OSC_PROTOCOL = {
         **OSCClient.OSC_PROTOCOL,
-        'stim_end_position': dict(mess='/m', type=int),
+        'stim_end_position': dict(mess='/n', type=int),
     }
 
 class HabituationDeterministicReversalLearningSession(DeterministicReversalLearningBaseSession, ChoiceWorldSession):
@@ -637,6 +637,21 @@ class HabituationDeterministicReversalLearningSession(DeterministicReversalLearn
             )
         )
         super().draw_next_trial_info()
+
+    def show_trial_log(self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO):
+        # construct info dict
+        trial_info = self.trials_table.iloc[self.trial_num]
+        info_dict = {
+            'Delay to Stimulus End Position': f'{trial_info.delay_to_stim_end_position:.2f} s',
+            'Stim End Position': trial_info.stim_end_position,
+        }
+
+        # update info dict with extra_info dict
+        if isinstance(extra_info, dict):
+            info_dict.update(extra_info)
+
+        # call parent method
+        super().show_trial_log(extra_info=info_dict, log_level=log_level)
 
     def get_state_machine_trial(self, i):
         sma = StateMachine(self.bpod)

@@ -151,7 +151,7 @@
                     <Name>BpodEvent</Name>
                   </Expression>
                   <Expression xsi:type="osc:ReceiveMessage">
-                    <osc:Address>/m</osc:Address>
+                    <osc:Address>/n</osc:Address>
                     <osc:TypeTag>i</osc:TypeTag>
                     <osc:Connection>bpod</osc:Connection>
                   </Expression>
