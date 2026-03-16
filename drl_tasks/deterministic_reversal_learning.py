@@ -16,6 +16,8 @@ from iblrig.base_choice_world import (
     ChoiceWorldTrialData,
 )
 
+from iblrig.tools import call_bonsai
+
 from pybpodapi.protocol import StateMachine
 from pydantic import NonNegativeFloat
 
@@ -106,6 +108,31 @@ class DeterministicReversalLearningBaseSession:
             thresholds_deg,
             self.stimulus_gain,
         )
+
+    def trigger_bonsai_cameras(self):
+        if not self.config:
+            # Use the first key in the device_cameras map
+            try:
+                self.config = next(k for k in self.hardware_settings.device_cameras)
+            except StopIteration:
+                return
+        configuration = self.hardware_settings.device_cameras[self.config]
+        if set(configuration.keys()) != {'BONSAI_WORKFLOW', 'left'}:
+            raise NotImplementedError
+        workflow_file = self._camera_mixin_bonsai_get_workflow_file(configuration, 'recording')
+        if workflow_file is None:
+            return
+        iblrig.path_helper.create_bonsai_layout_from_template(workflow_file)
+        # FIXME Use parameters in configuration map
+        parameters = {
+            'FrameRate': self.task_params.FRAME_RATE, # add new parameter here
+            'FileNameLeft': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.raw.avi'),
+            'FileNameLeftData': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.frameData.bin'),
+            'FileNameMic': self.paths.SESSION_RAW_DATA_FOLDER.joinpath('_iblrig_micData.raw.wav'),
+            'RecordSound': self.task_params.RECORD_SOUND,
+        }
+        call_bonsai(workflow_file, parameters, wait=False, editor=False)
+        log.info('Bonsai camera recording process started')
 
 
 
