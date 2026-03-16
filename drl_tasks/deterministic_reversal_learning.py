@@ -19,6 +19,9 @@ from iblrig.base_choice_world import (
 from iblrig.tools import call_bonsai
 from drl_tasks import video_pyspin
 
+import enum
+from iblrig.hardware import SOFTCODE
+
 from pybpodapi.protocol import StateMachine
 from pydantic import NonNegativeFloat
 
@@ -27,7 +30,7 @@ from iblrig.base_tasks import OSCClient
 
 log = logging.getLogger(__name__)
 
-class DeterministicReversalLearningBaseSession:
+class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
         super().init_mixin_sound()
@@ -137,6 +140,69 @@ class DeterministicReversalLearningBaseSession:
         }
         call_bonsai(workflow_file, parameters, wait=False, editor=False)
         log.info('Bonsai camera recording process started')
+
+    def _wait_for_camera_and_initial_delay(self) -> None:
+        initial_delay = self.task_params.get('SESSION_DELAY_START', 0)
+
+        # temporary IntEnum for storing softcodes
+        # SOFTCODE.TRIGGER_CAMERA is being reused; we add three more unique values
+        class TemporarySoftcodes(enum.IntEnum):
+            START_CAMERA_RECORDING = SOFTCODE.TRIGGER_CAMERA.value
+            WAIT_FOR_CAMERA_TRIGGER = enum.auto()
+            CAMERA_TRIGGER_RECEIVED = enum.auto()
+            STARTING_INITIAL_DELAY = enum.auto()
+
+        # store the original softcode handler
+        original_softcode_handler = self.bpod.softcode_handler_function
+
+        # define temporary softcode handler
+        def temporary_softcode_handler(softcode: int):
+            match softcode:
+                case TemporarySoftcodes.START_CAMERA_RECORDING:
+                    original_softcode_handler(softcode)  # pass to original handler
+                case TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER:
+                    log.info('Waiting to receive first camera trigger ...')
+                case TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED:
+                    log.info('Camera trigger received')
+                case TemporarySoftcodes.STARTING_INITIAL_DELAY:
+                    if initial_delay > 0:
+                        log.info(f'Waiting for {initial_delay} s')
+                    else:
+                        log.info('No initial delay defined')
+
+        # overwrite softcode handler
+        self.bpod.softcode_handler_function = temporary_softcode_handler
+
+        # define and run state machine
+        sma = StateMachine(self.bpod)
+        sma.add_state(
+            state_name='start_camera_workflow',
+            output_actions=[('SoftCode', TemporarySoftcodes.START_CAMERA_RECORDING), ('BNC2', 255)], # sets OUT2 high!
+            state_change_conditions={'Tup': 'wait_for_camera_trigger'},
+        )
+        sma.add_state(
+            state_name='wait_for_camera_trigger',
+            output_actions=[('SoftCode', TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER)],
+            state_change_conditions={'Port1In': 'camera_trigger_received'},
+        )
+        sma.add_state(
+            state_name='camera_trigger_received',
+            output_actions=[('SoftCode', TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED)],
+            state_change_conditions={'Tup': 'delay_initiation'},
+        )
+        sma.add_state(
+            state_name='delay_initiation',
+            state_timer=self.task_params.get('SESSION_DELAY_START', 0),
+            output_actions=[('SoftCode', TemporarySoftcodes.STARTING_INITIAL_DELAY)],
+            state_change_conditions={'Tup': 'exit'},
+        )
+        self.bpod.send_state_machine(sma)
+        self.bpod.run_state_machine(sma)  # blocking until state-machine is finished
+        if initial_delay > 0:
+            log.info('Initial delay has passed')
+
+        # restore original softcode handler
+        self.bpod.softcode_handler_function = original_softcode_handler
 
 
 
@@ -474,6 +540,21 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
 
+        # Only run cleanup if last trial or user pressed stop
+        if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
+            try:
+                sma = StateMachine(self.bpod)
+                sma.add_state(
+                    state_name='stop_miniscope',
+                    state_timer=0.01,
+                    output_actions=[('BNC2', 0)],
+                    state_change_conditions={'Tup': 'exit'}
+                )
+                self.bpod.send_state_machine(sma)
+                self.bpod.run_state_machine(sma)
+            except Exception as e:
+                log.warning(f"Failed to run cleanup: {e}")
+
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
     def show_trial_log(
@@ -634,7 +715,6 @@ class HabituationDeterministicReversalLearningSession(DeterministicReversalLearn
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-
 
     def start_mixin_bpod(self):
         super().start_mixin_bpod()

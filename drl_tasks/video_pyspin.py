@@ -329,4 +329,3 @@ def set_camera_fps(fps: float, camera: PySpin.CameraPtr) -> bool:
 
     except Exception as e:
         return camera_log(logging.ERROR, camera, f"Error setting frame rate: {e}")
-
