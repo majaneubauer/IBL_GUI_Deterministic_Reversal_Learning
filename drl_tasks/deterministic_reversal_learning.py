@@ -17,6 +17,7 @@ from iblrig.base_choice_world import (
 )
 
 from iblrig.tools import call_bonsai
+from drl_tasks import video_pyspin
 
 from pybpodapi.protocol import StateMachine
 from pydantic import NonNegativeFloat
@@ -110,6 +111,9 @@ class DeterministicReversalLearningBaseSession:
         )
 
     def trigger_bonsai_cameras(self):
+        video_pyspin.enable_camera_trigger(False)
+        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
+        video_pyspin.enable_camera_trigger(True)
         if not self.config:
             # Use the first key in the device_cameras map
             try:
