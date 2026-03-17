@@ -162,6 +162,32 @@ def get_enumeration_pointer(camera: PySpin.CameraPtr, node_name: str) -> PySpin.
     assert pointer.IsValid(), f'Invalid CEnumerationPtr {pointer.GetName()} for camera #{camera.DeviceID()}'
     return pointer
 
+def get_float_pointer(camera: PySpin.CameraPtr, node_name: str) -> PySpin.CFloatPtr:
+    """
+    Retrieve a pointer to a float node from the camera's node map.
+
+    Parameters
+    ----------
+    camera : PySpin.CameraPtr
+        The camera pointer from which to retrieve the enumeration node.
+    node_name : str
+        The name of the enumeration node to retrieve.
+
+    Returns
+    -------
+    PySpin.CFloatPtr
+        Pointer to the float node corresponding to the specified node name.
+
+    Raises
+    ------
+    AssertionError
+        If the pointer is not valid for the specified camera.
+    """
+    node = get_node(camera, node_name)
+    pointer = PySpin.CFloatPtr(node)
+    assert pointer.IsValid(), f'Invalid CFloatPtr {pointer.GetName()} for camera #{camera.DeviceID()}'
+    return pointer
+
 
 def acquisition_ok() -> bool:
     """Test image acquisition for all available cameras.
@@ -301,31 +327,21 @@ def set_camera_fps(fps: float, camera: PySpin.CameraPtr) -> bool:
     fps : float
         Desired frames per second.
     camera : PySpin.CameraPtr
-        Camera pointer.
+        A pointer to a specific camera instance.
     """
     try:
-        node_map = camera.GetNodeMap()
-
-        # Enable manual frame rate if possible
-        node_enable = node_map.GetNode('AcquisitionFrameRateEnable')
-        if PySpin.IsAvailable(node_enable):
-            enable_ptr = PySpin.CBooleanPtr(node_enable)
-            if PySpin.IsWritable(enable_ptr):
-                enable_ptr.SetValue(True)
-
         # Set FPS
-        node_fps = node_map.GetNode('AcquisitionFrameRate')
-        fps_ptr = PySpin.CFloatPtr(node_fps)
+        fps_ptr = get_float_pointer(camera, 'AcquisitionFrameRate')
 
         assert PySpin.IsAvailable(fps_ptr), "AcquisitionFrameRate not available"
         assert PySpin.IsWritable(fps_ptr), "AcquisitionFrameRate not writable"
 
-        # Clamp to camera limits
+        # ensures fps is within camera limits
         fps = min(max(fps_ptr.GetMin(), fps), fps_ptr.GetMax())
 
         fps_ptr.SetValue(fps)
 
-        return camera_log(logging.INFO, camera, f"Set frame rate to {fps} FPS")
+        return camera_log(logging.WARNING, camera, f"Setting frame rate to {fps} FPS") # logging.INFO does not show up in trial log
 
     except Exception as e:
         return camera_log(logging.ERROR, camera, f"Error setting frame rate: {e}")

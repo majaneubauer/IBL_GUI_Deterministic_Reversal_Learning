@@ -114,8 +114,10 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         )
 
     def trigger_bonsai_cameras(self):
+        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
         video_pyspin.enable_camera_trigger(False)
         video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
+        # enable trigger again so that bonsai can disable it again
         video_pyspin.enable_camera_trigger(True)
         if not self.config:
             # Use the first key in the device_cameras map
@@ -132,7 +134,7 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         iblrig.path_helper.create_bonsai_layout_from_template(workflow_file)
         # FIXME Use parameters in configuration map
         parameters = {
-            'FrameRate': self.task_params.FRAME_RATE, # add new parameter here
+            'FrameRate': self.task_params.FRAME_RATE, # new parameter that bonsai workflow read in
             'FileNameLeft': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.raw.avi'),
             'FileNameLeftData': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.frameData.bin'),
             'FileNameMic': self.paths.SESSION_RAW_DATA_FOLDER.joinpath('_iblrig_micData.raw.wav'),
@@ -272,7 +274,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         current_map = self.map_data[-1] if hasattr(self, "map_data") and self.map_data else None
 
         # deterministic reversal
-        if self.block_trial_counter % self.block_length == 0: # modulo operator ensures that this is only checked at the end of a block # TODO change reversal criterion here
+        if self.block_trial_counter % self.block_length == 0: # modulo operator ensures that this is only checked at the end of a block
             if current_map is not None and current_map >= 0.5:
                 self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
                 self.block_trial_counter = 0
@@ -320,7 +322,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         # Continue with the stimulation once the quiescent period has passed without triggering movement thresholds.
         sma.add_state(
             state_name="quiescent_period",
-            state_timer=self.quiescent_period,  # TODO why is that here not self.tasks_params?
+            state_timer=self.quiescent_period,
             output_actions=[('BNC2', 255)],
             state_change_conditions={
                 "Tup": "stim_on",
@@ -400,7 +402,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
             state_timer=self.task_params.RESPONSE_WINDOW,
             output_actions=[
                 self.bpod.actions.bonsai_closed_loop, ('BNC2', 255)
-            ],  # TODO change bonsai closed loop meaning?
+            ],
             state_change_conditions={
                 "Tup": "no_go",
                 self.event_error: "freeze_error",
@@ -411,7 +413,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         # No-go: hide the visual stimulus and play white noise. Go to exit_state after FEEDBACK_NOGO_DELAY_SECS.
         sma.add_state(
             state_name="no_go",
-            state_timer=self.feedback_nogo_delay,  # TODO why is that here not self.tasks_params?
+            state_timer=self.feedback_nogo_delay,
             output_actions=[
                 self.bpod.actions.bonsai_hide_stim,
                 self.bpod.actions.play_noise,
@@ -436,7 +438,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         )
 
         # Reward: open the valve for a defined duration (and set BNC1 to high), freeze stimulus (freeze_reward same as
-        # freeze_error but #TODO how to differentiate which state to go to when Tup?).
+        # freeze_error but how to differentiate which state to go to when Tup?).
         # Continue to hide_stim/exit_state once FEEDBACK_CORRECT_DELAY_SECS have passed.
         sma.add_state(
             state_name="freeze_reward",
