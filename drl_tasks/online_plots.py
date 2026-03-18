@@ -559,7 +559,7 @@ class BpodWidget(pg.GraphicsLayoutWidget):
             self.addLabel(title, size="11pt", col=1, color="k")
 
         # add digital channels
-        for channel in channels or ("BNC1", "BNC2", "Port1"):
+        for channel in channels or ("BNC1", "BNC2", "Port1", "Port2", "Port3"):
             self.addDigitalChannel(channel)
 
         # add x axis
