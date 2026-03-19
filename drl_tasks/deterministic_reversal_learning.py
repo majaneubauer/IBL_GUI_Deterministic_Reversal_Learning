@@ -186,18 +186,18 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         )
         sma.add_state(
             state_name='wait_for_camera_trigger',
-            output_actions=[('SoftCode', TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER), ('BNC2', 0)],
+            output_actions=[('SoftCode', TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER)],
             state_change_conditions={'Port1In': 'camera_trigger_received'},
         )
         sma.add_state(
             state_name='camera_trigger_received',
-            output_actions=[('SoftCode', TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED), ('BNC2', 0)],
+            output_actions=[('SoftCode', TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED)],
             state_change_conditions={'Tup': 'delay_initiation'},
         )
         sma.add_state(
             state_name='delay_initiation',
             state_timer=self.task_params.get('SESSION_DELAY_START', 0),
-            output_actions=[('SoftCode', TemporarySoftcodes.STARTING_INITIAL_DELAY), ('BNC2', 0)],
+            output_actions=[('SoftCode', TemporarySoftcodes.STARTING_INITIAL_DELAY)],
             state_change_conditions={'Tup': 'exit'},
         )
         self.bpod.send_state_machine(sma)
@@ -207,7 +207,7 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
 
         # restore original softcode handler
         self.bpod.softcode_handler_function = original_softcode_handler
-    
+
     def check_sync_pulses(self, bpod_data):
         # todo move this in the post trial when we have a task flow
         if not self.bpod.is_connected:
@@ -224,6 +224,20 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         if not misc.get_port_events(events, name='Port3'):
             log.warning("NO MINISCOPE SYNC PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 3")
 
+    def stop_miniscope(self):
+        try:
+            sma = StateMachine(self.bpod)
+            sma.add_state(
+                state_name='stop_miniscope',
+                state_timer=20,
+                output_actions=[('BNC2', 255)],
+                state_change_conditions={'Tup': 'exit'}
+            )
+            self.bpod.send_state_machine(sma)
+            self.bpod.run_state_machine(sma)
+            log.warning("Stopping miniscope")
+        except Exception as e:
+            log.warning(f"Failed to run cleanup: {e}")
 
 
 class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
@@ -322,7 +336,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
             state_name="trial_start",
             state_timer=0,  # ~100µs hardware irreducible delay
             state_change_conditions={"Tup": "reset_rotary_encoder"},
-            output_actions=[self.bpod.actions.stop_sound, ("BNC1", 255), ('BNC2', 0)],
+            output_actions=[self.bpod.actions.stop_sound, ("BNC1", 255)],
         )
 
         # Reset the rotary encoder by sending the following opcodes via the modules serial interface
@@ -332,7 +346,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="reset_rotary_encoder",
             state_timer=0,
-            output_actions=[self.bpod.actions.rotary_encoder_reset, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.rotary_encoder_reset],
             state_change_conditions={"Tup": "quiescent_period"},
         )
 
@@ -341,7 +355,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="quiescent_period",
             state_timer=self.quiescent_period,
-            output_actions=[('BNC2', 0)],
+            output_actions=[],
             state_change_conditions={
                 "Tup": "stim_on",
                 self.movement_left: "reset_rotary_encoder",
@@ -355,7 +369,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="stim_on",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.bonsai_show_stim, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.bonsai_show_stim],
             state_change_conditions={
                 "BNC1High": "interactive_delay",
                 "BNC1Low": "interactive_delay",
@@ -367,7 +381,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="interactive_delay",
             state_timer=self.task_params.INTERACTIVE_DELAY,
-            output_actions=[('BNC2', 0)],
+            output_actions=[],
             state_change_conditions={"Tup": "play_instructive_tone"},
         )
 
@@ -375,7 +389,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="play_instructive_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_instructive_tone, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.play_instructive_tone],
             state_change_conditions={
                 "Tup": "open_loop",
                 "BNC2High": "open_loop",
@@ -386,7 +400,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[('BNC2', 0)],
+            output_actions=[],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
@@ -394,7 +408,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_tone, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.play_tone],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
@@ -405,7 +419,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="reset2_rotary_encoder",
             state_timer=0.05,
-            output_actions=[self.bpod.actions.rotary_encoder_reset, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.rotary_encoder_reset],
             state_change_conditions={"Tup": "closed_loop"},
         )
 
@@ -419,7 +433,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
             state_name="closed_loop",
             state_timer=self.task_params.RESPONSE_WINDOW,
             output_actions=[
-                self.bpod.actions.bonsai_closed_loop, ('BNC2', 0)
+                self.bpod.actions.bonsai_closed_loop
             ],
             state_change_conditions={
                 "Tup": "no_go",
@@ -434,8 +448,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
             state_timer=self.feedback_nogo_delay,
             output_actions=[
                 self.bpod.actions.bonsai_hide_stim,
-                self.bpod.actions.play_noise,
-                ('BNC2', 0)
+                self.bpod.actions.play_noise
             ],
             state_change_conditions={"Tup": "exit_state"},
         )
@@ -445,13 +458,13 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="freeze_error",
             state_timer=0,
-            output_actions=[self.bpod.actions.bonsai_freeze_stim, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.bonsai_freeze_stim],
             state_change_conditions={"Tup": "error"},
         )
         sma.add_state(
             state_name="error",
             state_timer=self.feedback_error_delay,
-            output_actions=[self.bpod.actions.play_noise, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.play_noise],
             state_change_conditions={"Tup": "hide_stim"},
         )
 
@@ -461,19 +474,19 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="freeze_reward",
             state_timer=0,
-            output_actions=[self.bpod.actions.bonsai_freeze_stim, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.bonsai_freeze_stim],
             state_change_conditions={"Tup": "reward"},
         )
         sma.add_state(
             state_name="reward",
             state_timer=self.reward_time,
-            output_actions=[("Valve1", 255), ("BNC1", 255), ('BNC2', 0)],
+            output_actions=[("Valve1", 255), ("BNC1", 255)],
             state_change_conditions={"Tup": "correct"},
         )
         sma.add_state(
             state_name="correct",
             state_timer=self.feedback_correct_delay - self.reward_time,
-            output_actions=[('BNC2', 0)],
+            output_actions=[],
             state_change_conditions={"Tup": "hide_stim"},
         )
 
@@ -483,7 +496,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="hide_stim",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.bonsai_hide_stim, ('BNC2', 0)],
+            output_actions=[self.bpod.actions.bonsai_hide_stim],
             state_change_conditions={
                 "Tup": "exit_state",
                 "BNC1High": "exit_state",
@@ -495,7 +508,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         sma.add_state(
             state_name="exit_state",
             state_timer=self.task_params.ITI_DELAY_SECS,
-            output_actions=[("BNC1", 255), ('BNC2', 0)],
+            output_actions=[("BNC1", 255)],
             state_change_conditions={"Tup": "exit"},
         )
 
@@ -563,19 +576,7 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
 
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
-            try:
-                sma = StateMachine(self.bpod)
-                sma.add_state(
-                    state_name='stop_miniscope',
-                    state_timer=20,
-                    output_actions=[('BNC2', 255)],
-                    state_change_conditions={'Tup': 'exit'}
-                )
-                self.bpod.send_state_machine(sma)
-                self.bpod.run_state_machine(sma)
-                log.warning("stopping miniscope")
-            except Exception as e:
-                log.warning(f"Failed to run cleanup: {e}")
+            self.stop_miniscope()
 
         super(ActiveChoiceWorldSession, self).trial_completed(bpod_data)
 
@@ -603,18 +604,6 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
 
         # call parent method
         super().show_trial_log(extra_info=info_dict, log_level=log_level)
-
-    def _finalize(self):
-        # first let parent clean up (kills plotting subprocess etc.)
-        super()._finalize()
-
-        # save only completed trials
-        df = self.trials_table.iloc[: self.trial_num + 1]
-
-        output_path = self.paths.SESSION_FOLDER / "trials_table.csv"
-        df.to_csv(output_path, index=False)
-
-        log.info(f"Trials table saved to {output_path}")
 
     @staticmethod
     def set_priors(prior_type: str):
@@ -785,6 +774,13 @@ class HabituationDeterministicReversalLearningSession(DeterministicReversalLearn
 
         # call parent method
         super().show_trial_log(extra_info=info_dict, log_level=log_level)
+
+    def trial_completed(self, bpod_data: dict) -> None:
+        # Only run cleanup if last trial or user pressed stop
+        if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
+            self.stop_miniscope()
+        # call parent method
+        super().trial_completed(bpod_data)
 
     def get_state_machine_trial(self, i):
         sma = StateMachine(self.bpod)
