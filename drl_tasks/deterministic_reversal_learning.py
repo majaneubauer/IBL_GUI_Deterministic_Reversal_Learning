@@ -17,7 +17,6 @@ from iblrig.base_choice_world import (
 )
 
 from iblrig.tools import call_bonsai
-from drl_tasks import video_pyspin
 
 import enum
 from iblrig.hardware import SOFTCODE
@@ -264,11 +263,6 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
-        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
-        video_pyspin.enable_camera_trigger(False)
-        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
-        # enable trigger again so that bonsai can disable it again
-        video_pyspin.enable_camera_trigger(True)
 
     @property
     def correct_end_position(self):
@@ -743,11 +737,6 @@ class HabituationDeterministicReversalLearningSession(DeterministicReversalLearn
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
-        video_pyspin.enable_camera_trigger(False)
-        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
-        # enable trigger again so that bonsai can disable it again
-        video_pyspin.enable_camera_trigger(True)
 
     def start_mixin_bpod(self):
         super().start_mixin_bpod()
