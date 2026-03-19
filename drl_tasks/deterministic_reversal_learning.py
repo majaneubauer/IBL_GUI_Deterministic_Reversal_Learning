@@ -22,6 +22,8 @@ from drl_tasks import video_pyspin
 import enum
 from iblrig.hardware import SOFTCODE
 
+from iblrig import misc
+
 from pybpodapi.protocol import StateMachine
 from pydantic import NonNegativeFloat
 
@@ -114,11 +116,6 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         )
 
     def trigger_bonsai_cameras(self):
-        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
-        video_pyspin.enable_camera_trigger(False)
-        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
-        # enable trigger again so that bonsai can disable it again
-        video_pyspin.enable_camera_trigger(True)
         if not self.config:
             # Use the first key in the device_cameras map
             try:
@@ -211,6 +208,22 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
 
         # restore original softcode handler
         self.bpod.softcode_handler_function = original_softcode_handler
+    
+    def check_sync_pulses(self, bpod_data):
+        # todo move this in the post trial when we have a task flow
+        if not self.bpod.is_connected:
+            return
+        events = bpod_data['Events timestamps']
+        if not misc.get_port_events(events, name='BNC1'):
+            log.warning("NO FRAME2TTL PULSES RECEIVED ON BPOD'S TTL INPUT 1")
+        if not misc.get_port_events(events, name='BNC2'):
+            log.warning("NO SOUND SYNC PULSES RECEIVED ON BPOD'S TTL INPUT 2")
+        if not misc.get_port_events(events, name='Port1'):
+            log.warning("NO CAMERA SYNC PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 1")
+        if not misc.get_port_events(events, name='Port2'):
+            log.warning("NO LICK PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 2")
+        if not misc.get_port_events(events, name='Port3'):
+            log.warning("NO MINISCOPE SYNC PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 3")
 
 
 
@@ -251,6 +264,11 @@ class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSess
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
+        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
+        video_pyspin.enable_camera_trigger(False)
+        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
+        # enable trigger again so that bonsai can disable it again
+        video_pyspin.enable_camera_trigger(True)
 
     @property
     def correct_end_position(self):
@@ -725,6 +743,11 @@ class HabituationDeterministicReversalLearningSession(DeterministicReversalLearn
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
+        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
+        video_pyspin.enable_camera_trigger(False)
+        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
+        # enable trigger again so that bonsai can disable it again
+        video_pyspin.enable_camera_trigger(True)
 
     def start_mixin_bpod(self):
         super().start_mixin_bpod()
