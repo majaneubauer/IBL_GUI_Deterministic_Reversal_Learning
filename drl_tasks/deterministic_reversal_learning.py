@@ -17,6 +17,7 @@ from iblrig.base_choice_world import (
 )
 
 from iblrig.tools import call_bonsai
+from drl_tasks import video_pyspin
 
 import enum
 from iblrig.hardware import SOFTCODE
@@ -238,6 +239,35 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             log.warning("Stopping miniscope")
         except Exception as e:
             log.warning(f"Failed to run cleanup: {e}")
+
+    def start_mixin_fps(self):
+        # disable trigger to allow fps to be set --> is the same as what you would do in FlyCapture to change fps
+        video_pyspin.enable_camera_trigger(False)
+        # enable manual acquisition frame rate control
+        video_pyspin.enable_acquisition_frame_rate(True)
+        # set fps
+        video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
+        # disable manual acquisition frame rate control
+        video_pyspin.enable_acquisition_frame_rate(True)
+        # enable trigger again so that bonsai can disable it again
+        video_pyspin.enable_camera_trigger(True)
+
+    def start_hardware(self):
+        """
+        In this step we explicitly run the start methods of the various mixins.
+        The super class start method is overloaded because we need to start the different hardware pieces in order
+        """
+        if not self.is_mock:
+            self.start_mixin_frame2ttl()
+            self.start_mixin_bpod()
+            self.start_mixin_valve()
+            self.start_mixin_sound()
+            self.start_mixin_rotary_encoder()
+            self.start_mixin_bonsai_cameras()
+            self.start_mixin_fps()
+            self.start_mixin_bonsai_microphone()
+            self.start_mixin_bonsai_visual_stimulus()
+            self.bpod.register_softcodes(self.softcode_dictionary())
 
 
 class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
