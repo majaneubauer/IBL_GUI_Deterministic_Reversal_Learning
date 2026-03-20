@@ -247,8 +247,6 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         video_pyspin.enable_acquisition_frame_rate(True)
         # set fps
         video_pyspin.set_camera_fps(self.task_params.FRAME_RATE)
-        # disable manual acquisition frame rate control
-        video_pyspin.enable_acquisition_frame_rate(True)
         # enable trigger again so that bonsai can disable it again
         video_pyspin.enable_camera_trigger(True)
 
