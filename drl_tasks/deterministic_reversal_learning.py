@@ -53,10 +53,26 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             rate=self.sound["samplerate"],
             frequency=self.task_params.INSTRUCTIVE_TONE_FREQUENCY,
             duration=self.task_params.INSTRUCTIVE_TONE_DURATION,
-            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE
-            * amp_gain_factor,  # TODO is this a bug, or intentional?
+            amplitude=self.task_params.INSTRUCTIVE_TONE_AMPLITUDE,
             fade=0.01,
             chans=self.sound["channels"],
+        )
+        # create IBL sounds again without second amplitude suppression
+        self.sound['GO_TONE'] = iblrig.sound.make_sound(
+            rate=self.sound['samplerate'],
+            frequency=self.task_params.GO_TONE_FREQUENCY,
+            duration=self.task_params.GO_TONE_DURATION,
+            amplitude=self.task_params.GO_TONE_AMPLITUDE,
+            fade=0.01,
+            chans=self.sound['channels'],
+        )
+        self.sound['WHITE_NOISE'] = iblrig.sound.make_sound(
+            rate=self.sound['samplerate'],
+            frequency=-1,
+            duration=self.task_params.WHITE_NOISE_DURATION,
+            amplitude=self.task_params.WHITE_NOISE_AMPLITUDE,
+            fade=0.01,
+            chans=self.sound['channels'],
         )
 
     def start_mixin_sound(self):
