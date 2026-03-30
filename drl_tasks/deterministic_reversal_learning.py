@@ -30,6 +30,9 @@ from pydantic import NonNegativeFloat
 
 from iblrig.base_tasks import OSCClient
 
+from drl_tasks.path_helper import iterate_previous_sessions
+from iblrig.raw_data_loaders import load_task_jsonable
+
 log = logging.getLogger(__name__)
 
 
@@ -335,6 +338,27 @@ class DeterministicReversalLearningSession(
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
+
+        # get subject name from kwargs
+        subject_name = kwargs.get("subject")
+        if subject_name:
+            sessions = iterate_previous_sessions(
+                subject_name=subject_name,
+                task_name=self.protocol_name,
+                n=1,
+            )
+            log.warning(f"Subject used: {subject_name}")
+
+            if sessions:
+                prev_session = sessions[0] # sorted by latest first
+                path_file_task_data = prev_session['file_task_data']
+                prev_trials_table, prev_bpod_data = load_task_jsonable(path_file_task_data)
+                prev_block_side = prev_trials_table["block_side"].iloc[-1]
+                log.warning(f"Subject {subject_name} ended previous session with block side: {prev_block_side}")
+            else:
+                log.warning("No previous sessions found")
+        else:
+            log.warning("No subject provided")
 
     @property
     def correct_end_position(self):
