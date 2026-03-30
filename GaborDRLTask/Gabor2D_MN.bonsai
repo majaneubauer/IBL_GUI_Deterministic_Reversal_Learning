@@ -1279,6 +1279,11 @@ Value = whhel_radius for wheel_perim</Description>
                               <Expression xsi:type="SubscribeSubject">
                                 <Name>Gain</Name>
                               </Expression>
+                              <Expression xsi:type="Divide">
+                                <Operand xsi:type="FloatProperty">
+                                  <Value>4</Value>
+                                </Operand>
+                              </Expression>
                               <Expression xsi:type="Combinator">
                                 <Combinator xsi:type="rx:CombineLatest" />
                               </Expression>
@@ -1342,13 +1347,14 @@ Value = whhel_radius for wheel_perim</Description>
                               </Expression>
                             </Nodes>
                             <Edges>
-                              <Edge From="0" To="5" Label="Source1" />
-                              <Edge From="1" To="3" Label="Source2" />
+                              <Edge From="0" To="6" Label="Source1" />
+                              <Edge From="1" To="4" Label="Source2" />
                               <Edge From="2" To="3" Label="Source1" />
                               <Edge From="3" To="4" Label="Source1" />
-                              <Edge From="4" To="5" Label="Source2" />
-                              <Edge From="5" To="6" Label="Source1" />
+                              <Edge From="4" To="5" Label="Source1" />
+                              <Edge From="5" To="6" Label="Source2" />
                               <Edge From="6" To="7" Label="Source1" />
+                              <Edge From="7" To="8" Label="Source1" />
                             </Edges>
                           </Workflow>
                         </Expression>
