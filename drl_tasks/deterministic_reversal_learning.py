@@ -32,7 +32,6 @@ from iblrig.base_tasks import OSCClient
 
 log = logging.getLogger(__name__)
 
-
 class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
@@ -124,33 +123,25 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             except StopIteration:
                 return
         configuration = self.hardware_settings.device_cameras[self.config]
-        if set(configuration.keys()) != {"BONSAI_WORKFLOW", "left"}:
+        if set(configuration.keys()) != {'BONSAI_WORKFLOW', 'left'}:
             raise NotImplementedError
-        workflow_file = self._camera_mixin_bonsai_get_workflow_file(
-            configuration, "recording"
-        )
+        workflow_file = self._camera_mixin_bonsai_get_workflow_file(configuration, 'recording')
         if workflow_file is None:
             return
         iblrig.path_helper.create_bonsai_layout_from_template(workflow_file)
         # FIXME Use parameters in configuration map
         parameters = {
-            "FrameRate": self.task_params.FRAME_RATE,  # new parameter that bonsai workflow read in
-            "FileNameLeft": self.paths.SESSION_FOLDER.joinpath(
-                "raw_video_data", "_iblrig_leftCamera.raw.avi"
-            ),
-            "FileNameLeftData": self.paths.SESSION_FOLDER.joinpath(
-                "raw_video_data", "_iblrig_leftCamera.frameData.bin"
-            ),
-            "FileNameMic": self.paths.SESSION_RAW_DATA_FOLDER.joinpath(
-                "_iblrig_micData.raw.wav"
-            ),
-            "RecordSound": self.task_params.RECORD_SOUND,
+            'FrameRate': self.task_params.FRAME_RATE, # new parameter that bonsai workflow read in
+            'FileNameLeft': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.raw.avi'),
+            'FileNameLeftData': self.paths.SESSION_FOLDER.joinpath('raw_video_data', '_iblrig_leftCamera.frameData.bin'),
+            'FileNameMic': self.paths.SESSION_RAW_DATA_FOLDER.joinpath('_iblrig_micData.raw.wav'),
+            'RecordSound': self.task_params.RECORD_SOUND,
         }
         call_bonsai(workflow_file, parameters, wait=False, editor=False)
-        log.info("Bonsai camera recording process started")
+        log.info('Bonsai camera recording process started')
 
     def _wait_for_camera_and_initial_delay(self) -> None:
-        initial_delay = self.task_params.get("SESSION_DELAY_START", 0)
+        initial_delay = self.task_params.get('SESSION_DELAY_START', 0)
 
         # temporary IntEnum for storing softcodes
         # SOFTCODE.TRIGGER_CAMERA is being reused; we add three more unique values
@@ -169,14 +160,14 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
                 case TemporarySoftcodes.START_CAMERA_RECORDING:
                     original_softcode_handler(softcode)  # pass to original handler
                 case TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER:
-                    log.info("Waiting to receive first camera trigger ...")
+                    log.info('Waiting to receive first camera trigger ...')
                 case TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED:
-                    log.info("Camera trigger received")
+                    log.info('Camera trigger received')
                 case TemporarySoftcodes.STARTING_INITIAL_DELAY:
                     if initial_delay > 0:
-                        log.info(f"Waiting for {initial_delay} s")
+                        log.info(f'Waiting for {initial_delay} s')
                     else:
-                        log.info("No initial delay defined")
+                        log.info('No initial delay defined')
 
         # overwrite softcode handler
         self.bpod.softcode_handler_function = temporary_softcode_handler
@@ -184,39 +175,36 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         # define and run state machine
         sma = StateMachine(self.bpod)
         sma.add_state(
-            state_name="set_miniscope_high",
-            state_timer=1,  # should be larger than 500 ms to guarantee reliable recording
-            output_actions=[("BNC2", 255)],  # sets OUT2 high!
-            state_change_conditions={"Tup": "start_camera_workflow"},
+            state_name='set_miniscope_high',
+            state_timer=0.5,
+            output_actions=[('BNC2', 255)], # sets OUT2 high!
+            state_change_conditions={'Tup': 'start_camera_workflow'},
         )
         sma.add_state(
-            state_name="start_camera_workflow",
-            output_actions=[
-                ("SoftCode", TemporarySoftcodes.START_CAMERA_RECORDING),
-                ("BNC2", 0),
-            ],  # sets OUT2 high!
-            state_change_conditions={"Tup": "wait_for_camera_trigger"},
+            state_name='start_camera_workflow',
+            output_actions=[('SoftCode', TemporarySoftcodes.START_CAMERA_RECORDING), ('BNC2', 0)], # sets OUT2 high!
+            state_change_conditions={'Tup': 'wait_for_camera_trigger'},
         )
         sma.add_state(
-            state_name="wait_for_camera_trigger",
-            output_actions=[("SoftCode", TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER)],
-            state_change_conditions={"Port1In": "camera_trigger_received"},
+            state_name='wait_for_camera_trigger',
+            output_actions=[('SoftCode', TemporarySoftcodes.WAIT_FOR_CAMERA_TRIGGER)],
+            state_change_conditions={'Port1In': 'camera_trigger_received'},
         )
         sma.add_state(
-            state_name="camera_trigger_received",
-            output_actions=[("SoftCode", TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED)],
-            state_change_conditions={"Tup": "delay_initiation"},
+            state_name='camera_trigger_received',
+            output_actions=[('SoftCode', TemporarySoftcodes.CAMERA_TRIGGER_RECEIVED)],
+            state_change_conditions={'Tup': 'delay_initiation'},
         )
         sma.add_state(
-            state_name="delay_initiation",
-            state_timer=self.task_params.get("SESSION_DELAY_START", 0),
-            output_actions=[("SoftCode", TemporarySoftcodes.STARTING_INITIAL_DELAY)],
-            state_change_conditions={"Tup": "exit"},
+            state_name='delay_initiation',
+            state_timer=self.task_params.get('SESSION_DELAY_START', 0),
+            output_actions=[('SoftCode', TemporarySoftcodes.STARTING_INITIAL_DELAY)],
+            state_change_conditions={'Tup': 'exit'},
         )
         self.bpod.send_state_machine(sma)
         self.bpod.run_state_machine(sma)  # blocking until state-machine is finished
         if initial_delay > 0:
-            log.info("Initial delay has passed")
+            log.info('Initial delay has passed')
 
         # restore original softcode handler
         self.bpod.softcode_handler_function = original_softcode_handler
@@ -225,26 +213,26 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
         # todo move this in the post trial when we have a task flow
         if not self.bpod.is_connected:
             return
-        events = bpod_data["Events timestamps"]
-        if not misc.get_port_events(events, name="BNC1"):
+        events = bpod_data['Events timestamps']
+        if not misc.get_port_events(events, name='BNC1'):
             log.warning("NO FRAME2TTL PULSES RECEIVED ON BPOD'S TTL INPUT 1")
-        if not misc.get_port_events(events, name="BNC2"):
+        if not misc.get_port_events(events, name='BNC2'):
             log.warning("NO SOUND SYNC PULSES RECEIVED ON BPOD'S TTL INPUT 2")
-        if not misc.get_port_events(events, name="Port1"):
+        if not misc.get_port_events(events, name='Port1'):
             log.warning("NO CAMERA SYNC PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 1")
-        if not misc.get_port_events(events, name="Port2"):
+        if not misc.get_port_events(events, name='Port2'):
             log.warning("NO LICK PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 2")
-        if not misc.get_port_events(events, name="Port3"):
+        if not misc.get_port_events(events, name='Port3'):
             log.warning("NO MINISCOPE SYNC PULSES RECEIVED ON BPOD'S BEHAVIOR PORT 3")
 
     def stop_miniscope(self):
         try:
             sma = StateMachine(self.bpod)
             sma.add_state(
-                state_name="stop_miniscope",
+                state_name='stop_miniscope',
                 state_timer=20,
-                output_actions=[("BNC2", 255)],
-                state_change_conditions={"Tup": "exit"},
+                output_actions=[('BNC2', 255)],
+                state_change_conditions={'Tup': 'exit'}
             )
             self.bpod.send_state_machine(sma)
             self.bpod.run_state_machine(sma)
@@ -293,9 +281,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     failure_total: float
 
 
-class DeterministicReversalLearningSession(
-    DeterministicReversalLearningBaseSession, ActiveChoiceWorldSession
-):
+class DeterministicReversalLearningSession(DeterministicReversalLearningBaseSession, ActiveChoiceWorldSession):
     protocol_name = (
         "DeterministicReversalLearning"  # here defined how it shows up in GUI
     )
@@ -345,14 +331,10 @@ class DeterministicReversalLearningSession(
         self.block_trial_counter += 1
 
         # get latest MAP if it exists
-        current_map = (
-            self.map_data[-1] if hasattr(self, "map_data") and self.map_data else None
-        )
+        current_map = self.map_data[-1] if hasattr(self, "map_data") and self.map_data else None
 
         # deterministic reversal
-        if (
-            self.block_trial_counter % self.block_length == 0
-        ):  # modulo operator ensures that this is only checked at the end of a block
+        if self.block_trial_counter % self.block_length == 0: # modulo operator ensures that this is only checked at the end of a block
             if current_map is not None and current_map >= 0.5:
                 self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
                 self.block_trial_counter = 0
@@ -360,9 +342,7 @@ class DeterministicReversalLearningSession(
                     f"Reversal! New block side: {self.block_side}"
                 )  # does not work with log.info
             else:
-                log.warning(
-                    f"Reversal criterion not met! Continuing with current block side: {self.block_side}"
-                )
+                log.warning(f"Reversal criterion not met! Continuing with current block side: {self.block_side}")
 
         self.draw_next_trial_info(
             pleft=self.task_params.PROBABILITY_LEFT
@@ -372,9 +352,7 @@ class DeterministicReversalLearningSession(
         # log block side
         self.trials_table.at[self.trial_num, "block_side"] = self.block_side
         # add stim end position to trials table
-        self.trials_table.at[self.trial_num, "stim_end_position"] = (
-            self.correct_end_position
-        )
+        self.trials_table.at[self.trial_num, 'stim_end_position'] = self.correct_end_position
         super().draw_next_trial_info()
 
     def get_state_machine_trial(self, i):
@@ -482,7 +460,9 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="closed_loop",
             state_timer=self.task_params.RESPONSE_WINDOW,
-            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            output_actions=[
+                self.bpod.actions.bonsai_closed_loop
+            ],
             state_change_conditions={
                 "Tup": "no_go",
                 self.event_error: "freeze_error",
@@ -496,7 +476,7 @@ class DeterministicReversalLearningSession(
             state_timer=self.feedback_nogo_delay,
             output_actions=[
                 self.bpod.actions.bonsai_hide_stim,
-                self.bpod.actions.play_noise,
+                self.bpod.actions.play_noise
             ],
             state_change_conditions={"Tup": "exit_state"},
         )
@@ -567,9 +547,7 @@ class DeterministicReversalLearningSession(
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        response_time = (
-            state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
-        )
+        response_time = state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
@@ -757,22 +735,19 @@ class DeterministicReversalLearningSession(
 
 class HabituationDeterministicReversalLearningTrialData(ChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ChoiceWorldTrialData`."""
-
     delay_to_stim_end_position: NonNegativeFloat
     stim_end_position: int
-
 
 class ExtendedOSCClient(OSCClient):
     OSC_PROTOCOL = {
         **OSCClient.OSC_PROTOCOL,
-        "stim_end_position": dict(mess="/n", type=int),
+        'stim_end_position': dict(mess='/n', type=int),
     }
 
-
-class HabituationDeterministicReversalLearningSession(
-    DeterministicReversalLearningBaseSession, ChoiceWorldSession
-):
-    protocol_name = "HabituationDeterministicReversalLearning"  # here defined how it shows up in GUI
+class HabituationDeterministicReversalLearningSession(DeterministicReversalLearningBaseSession, ChoiceWorldSession):
+    protocol_name = (
+        "HabituationDeterministicReversalLearning"  # here defined how it shows up in GUI
+    )
     TrialDataModel = HabituationDeterministicReversalLearningTrialData
 
     def __init__(self, *args, **kwargs):
@@ -783,13 +758,10 @@ class HabituationDeterministicReversalLearningSession(
     def start_mixin_bpod(self):
         super().start_mixin_bpod()
         module = self.bpod.rotary_encoder
-        module_port = f"Serial{module.serial_port}"
+        module_port = f'Serial{module.serial_port}'
         self.bpod.actions.update(
             {
-                "bonsai_show_end_position": (
-                    module_port,
-                    self.bpod._define_message(module, [ord("#"), 10]),
-                ),
+                'bonsai_show_end_position': (module_port, self.bpod._define_message(module, [ord('#'), 10])),
             }
         )
 
@@ -803,11 +775,9 @@ class HabituationDeterministicReversalLearningSession(
 
     def draw_next_trial_info(self, *args, **kwargs):
         # update trial table fields specific to habituation choice world
-        self.trials_table.at[self.trial_num, "delay_to_stim_end_position"] = (
-            np.random.normal(self.task_params.DELAY_TO_STIM_END_POSITION, 2)
-        )
+        self.trials_table.at[self.trial_num, 'delay_to_stim_end_position'] = np.random.normal(self.task_params.DELAY_TO_STIM_END_POSITION, 2)
         # select stim end position
-        self.trials_table.at[self.trial_num, "stim_end_position"] = int(
+        self.trials_table.at[self.trial_num, 'stim_end_position'] = int(
             np.random.choice(
                 self.task_params.STIM_END_POSITIONS,
                 p=[
@@ -818,14 +788,12 @@ class HabituationDeterministicReversalLearningSession(
         )
         super().draw_next_trial_info()
 
-    def show_trial_log(
-        self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO
-    ):
+    def show_trial_log(self, extra_info: dict[str, Any] | None = None, log_level: int = logging.INFO):
         # construct info dict
         trial_info = self.trials_table.iloc[self.trial_num]
         info_dict = {
-            "Delay to Stimulus End Position": f"{trial_info.delay_to_stim_end_position:.2f} s",
-            "Stim End Position": trial_info.stim_end_position,
+            'Delay to Stimulus End Position': f'{trial_info.delay_to_stim_end_position:.2f} s',
+            'Stim End Position': trial_info.stim_end_position,
         }
 
         # update info dict with extra_info dict
@@ -849,10 +817,10 @@ class HabituationDeterministicReversalLearningSession(
         # During this period the Bpod TTL is HIGH and there are no stimuli. The onset of this state is trial end;
         # the offset of this state is trial start!
         sma.add_state(
-            state_name="iti",
+            state_name='iti',
             state_timer=1,  # Stim off for 1 sec
-            state_change_conditions={"Tup": "stim_on"},
-            output_actions=[self.bpod.actions.bonsai_hide_stim, ("BNC1", 255)],
+            state_change_conditions={'Tup': 'stim_on'},
+            output_actions=[self.bpod.actions.bonsai_hide_stim, ('BNC1', 255)],
         )
 
         # This stim_on state is considered the actual trial start
@@ -895,34 +863,32 @@ class HabituationDeterministicReversalLearningSession(
         )
 
         sma.add_state(
-            state_name="stim_on_delay",
-            state_timer=self.trials_table.at[
-                self.trial_num, "delay_to_stim_end_position"
-            ],
-            state_change_conditions={"Tup": "stim_end_position"},
+            state_name='stim_on_delay',
+            state_timer=self.trials_table.at[self.trial_num, 'delay_to_stim_end_position'],
+            state_change_conditions={'Tup': 'stim_end_position'},
             output_actions=[],
         )
 
         sma.add_state(
-            state_name="stim_end_position",
+            state_name='stim_end_position',
             state_timer=0.5,
-            state_change_conditions={"Tup": "reward"},
+            state_change_conditions={'Tup': 'reward'},
             output_actions=[self.bpod.actions.bonsai_show_end_position],
         )
 
         sma.add_state(
-            state_name="reward",
+            state_name='reward',
             state_timer=self.reward_time,  # the length of time to leave reward valve open, i.e. reward size
-            state_change_conditions={"Tup": "post_reward"},
-            output_actions=[("Valve1", 255), ("BNC1", 255)],
+            state_change_conditions={'Tup': 'post_reward'},
+            output_actions=[('Valve1', 255), ('BNC1', 255)],
         )
         # This state defines the period after reward where Bpod TTL is LOW.
         # NB: The stimulus is on throughout this period. The stim off trigger occurs upon exit.
         # The stimulus thus remains in the screen centre for 0.5 + ITI_DELAY_SECS seconds.
         sma.add_state(
-            state_name="post_reward",
+            state_name='post_reward',
             state_timer=self.task_params.ITI_DELAY_SECS - self.reward_time,
-            state_change_conditions={"Tup": "exit"},
+            state_change_conditions={'Tup': 'exit'},
             output_actions=[],
         )
         return sma
