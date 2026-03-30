@@ -324,21 +324,9 @@ class DeterministicReversalLearningSession(
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-        # add block state
-        self.block_side = int(
-            np.random.choice(
-                self.task_params.BLOCK_SIDES,
-                p=[
-                    self.task_params.PROBABILITY_LEFT,
-                    1 - self.task_params.PROBABILITY_LEFT,
-                ],
-            )
-        )  # -1 = left, +1 = right
-        self.block_length = self.task_params.BLOCK_LENGTH
-        self.block_trial_counter = (
-            -1
-        )  # needs to be -1 and not 0 for next_trial condition to work
-
+        # defaults, assume no previous session
+        prev_session_exists = False
+        prev_block_side = None
         # get subject name from kwargs
         subject_name = kwargs.get("subject")
         if subject_name:
@@ -347,9 +335,10 @@ class DeterministicReversalLearningSession(
                 task_name=self.protocol_name,
                 n=1,
             )
-            log.warning(f"Subject used: {subject_name}")
+            log.warning(f"Using Subject: {subject_name}")
 
             if sessions:
+                prev_session_exists = True
                 prev_session = sessions[0] # sorted by latest first
                 path_file_task_data = prev_session['file_task_data']
                 prev_trials_table, prev_bpod_data = load_task_jsonable(path_file_task_data)
@@ -359,6 +348,26 @@ class DeterministicReversalLearningSession(
                 log.warning("No previous sessions found")
         else:
             log.warning("No subject provided")
+
+        # add block state
+        if prev_session_exists and prev_block_side is not None:
+            self.block_side = prev_block_side
+            log.warning(f"Using previous block side: {self.block_side}")
+        else:
+            self.block_side = int(
+                np.random.choice(
+                    self.task_params.BLOCK_SIDES,
+                    p=[
+                        self.task_params.PROBABILITY_LEFT,
+                        1 - self.task_params.PROBABILITY_LEFT,
+                    ],
+                )
+            )  # -1 = left, +1 = right
+            log.warning(f"Using random block side: {self.block_side}")
+        self.block_length = self.task_params.BLOCK_LENGTH
+        self.block_trial_counter = (
+            -1
+        )  # needs to be -1 and not 0 for next_trial condition to work
 
     @property
     def correct_end_position(self):
@@ -399,7 +408,7 @@ class DeterministicReversalLearningSession(
                 log.warning(
                     f"Reversal! New block side: {self.block_side}"
                 )  # does not work with log.info
-            else:
+            elif self.trial_num > 0:
                 log.warning(
                     f"Reversal criterion not met! Continuing with current block side: {self.block_side}"
                 )
