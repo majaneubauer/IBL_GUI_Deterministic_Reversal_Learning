@@ -1634,8 +1634,8 @@
             <Y>3</Y>
           </Location>
           <Size>
-            <Width>650</Width>
-            <Height>715</Height>
+            <Width>290</Width>
+            <Height>165</Height>
           </Size>
           <WindowState>Normal</WindowState>
         </EditorDialogSettings>
@@ -2097,18 +2097,6 @@
                       </Size>
                       <WindowState>Normal</WindowState>
                     </EditorDialogSettings>
-                  </DialogSettings>
-                  <DialogSettings>
-                    <Visible>false</Visible>
-                    <Location>
-                      <X>0</X>
-                      <Y>0</Y>
-                    </Location>
-                    <Size>
-                      <Width>0</Width>
-                      <Height>0</Height>
-                    </Size>
-                    <WindowState>Normal</WindowState>
                   </DialogSettings>
                   <DialogSettings>
                     <Visible>false</Visible>
