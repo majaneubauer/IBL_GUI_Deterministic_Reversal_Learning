@@ -261,7 +261,7 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             sma = StateMachine(self.bpod)
             sma.add_state(
                 state_name="stop_miniscope",
-                state_timer=20,
+                state_timer=self.task_params.STOP_MINISCOPE_SECS,
                 output_actions=[("BNC2", 255)],
                 state_change_conditions={"Tup": "exit"},
             )

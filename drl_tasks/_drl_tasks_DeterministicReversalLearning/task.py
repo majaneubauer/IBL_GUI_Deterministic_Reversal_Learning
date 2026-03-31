@@ -19,6 +19,20 @@ class Session(DeterministicReversalLearningSession):
         "DeterministicReversalLearning"  # here defined how it shows up in GUI
     )
 
+    def __init__(
+        self,
+        *args,
+        block_length: int = DEFAULTS['BLOCK_LENGTH'],
+        reward_amount_ul: float = DEFAULTS['REWARD_AMOUNT_UL'],
+        stim_gain: float = DEFAULTS['STIM_GAIN'],
+        stop_miniscope_secs: int = DEFAULTS['STOP_MINISCOPE_SECS'],
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.task_params['BLOCK_LENGTH'] = block_length
+        self.task_params['REWARD_AMOUNT_UL'] = reward_amount_ul
+        self.task_params['STIM_GAIN'] = stim_gain
+        self.task_params['STOP_MINISCOPE_SECS'] = stop_miniscope_secs
 
     @staticmethod
     def extra_parser():
@@ -33,13 +47,12 @@ class Session(DeterministicReversalLearningSession):
             help='Length of a block within one session',
         )
         parser.add_argument(
-            '--contrast_set',
-            option_strings=['--contrast_set'],
-            dest='contrast_set',
-            default=DEFAULTS['CONTRAST_SET'],
-            nargs='+',
+            '--reward_amount_ul',
+            option_strings=['--reward_amount_ul'],
+            dest='reward_amount_ul',
+            default=DEFAULTS['REWARD_AMOUNT_UL'],
             type=float,
-            help='Set of contrasts to present',
+            help='Reward amount (µl) within one session',
         )
         parser.add_argument(
             '--stim_gain',
@@ -48,6 +61,14 @@ class Session(DeterministicReversalLearningSession):
             default=DEFAULTS['STIM_GAIN'],
             type=float,
             help=f'Visual angle/wheel displacement (deg/mm, default: {DEFAULTS["STIM_GAIN"]})',
+        )
+        parser.add_argument(
+            '--stop_miniscope_secs',
+            option_strings=['--stop_miniscope_secs'],
+            dest='stop_miniscope_secs',
+            default=DEFAULTS['STOP_MINISCOPE_SECS'],
+            type=int,
+            help='Length of HIGH signal to stop miniscope at the end of one session',
         )
         return parser
 
