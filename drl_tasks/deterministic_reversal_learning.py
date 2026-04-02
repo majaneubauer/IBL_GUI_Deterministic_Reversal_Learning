@@ -1,5 +1,5 @@
 import logging
-import yaml
+import Path
 import iblrig
 from iblrig.hifi import HiFi
 import numpy as np
@@ -37,6 +37,9 @@ log = logging.getLogger(__name__)
 
 
 class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
+
+    base_parameters_file = Path(__file__).parent.joinpath("base_drl_params.yaml")
+
     def init_mixin_sound(self):
         # call the original method so that GO_TONE and WHITE_NOISE are initialised as before
         super().init_mixin_sound()
@@ -61,21 +64,21 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             chans=self.sound["channels"],
         )
         # create IBL sounds again without second amplitude suppression
-        self.sound['GO_TONE'] = iblrig.sound.make_sound(
-            rate=self.sound['samplerate'],
+        self.sound["GO_TONE"] = iblrig.sound.make_sound(
+            rate=self.sound["samplerate"],
             frequency=self.task_params.GO_TONE_FREQUENCY,
             duration=self.task_params.GO_TONE_DURATION,
             amplitude=self.task_params.GO_TONE_AMPLITUDE,
             fade=0.01,
-            chans=self.sound['channels'],
+            chans=self.sound["channels"],
         )
-        self.sound['WHITE_NOISE'] = iblrig.sound.make_sound(
-            rate=self.sound['samplerate'],
+        self.sound["WHITE_NOISE"] = iblrig.sound.make_sound(
+            rate=self.sound["samplerate"],
             frequency=-1,
             duration=self.task_params.WHITE_NOISE_DURATION,
             amplitude=self.task_params.WHITE_NOISE_AMPLITUDE,
             fade=0.01,
-            chans=self.sound['channels'],
+            chans=self.sound["channels"],
         )
 
     def start_mixin_sound(self):
@@ -339,11 +342,15 @@ class DeterministicReversalLearningSession(
 
             if sessions:
                 prev_session_exists = True
-                prev_session = sessions[0] # sorted by latest first
-                path_file_task_data = prev_session['file_task_data']
-                prev_trials_table, prev_bpod_data = load_task_jsonable(path_file_task_data)
+                prev_session = sessions[0]  # sorted by latest first
+                path_file_task_data = prev_session["file_task_data"]
+                prev_trials_table, prev_bpod_data = load_task_jsonable(
+                    path_file_task_data
+                )
                 prev_block_side = prev_trials_table["block_side"].iloc[-1]
-                log.warning(f"Subject {subject_name} ended previous session with block side: {prev_block_side}")
+                log.warning(
+                    f"Subject {subject_name} ended previous session with block side: {prev_block_side}"
+                )
             else:
                 log.warning("No previous sessions found")
         else:
