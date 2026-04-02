@@ -1,5 +1,5 @@
 import logging
-import Path
+from pathlib import Path
 import iblrig
 from iblrig.hifi import HiFi
 import numpy as np
