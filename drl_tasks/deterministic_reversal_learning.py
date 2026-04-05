@@ -371,7 +371,6 @@ class DeterministicReversalLearningSession(
                 )
             )  # -1 = left, +1 = right
             log.warning(f"Using random block side: {self.block_side}")
-        self.block_length = self.task_params.BLOCK_LENGTH
         self.block_trial_counter = (
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
@@ -407,7 +406,7 @@ class DeterministicReversalLearningSession(
 
         # deterministic reversal
         if (
-            self.block_trial_counter % self.block_length == 0
+            self.block_trial_counter % self.task_params.BLOCK_LENGTH == 0
         ):  # modulo operator ensures that this is only checked at the end of a block
             if current_map is not None and current_map >= 0.5:
                 self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
