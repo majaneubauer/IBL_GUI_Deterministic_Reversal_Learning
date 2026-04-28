@@ -1,0 +1,3 @@
+'REWARD_AMOUNT_UL': 10.0
+'STIM_GAIN': 4.0  # wheel to stimulus relationship (degrees visual angle per mm of wheel displacement)
+'STOP_MINISCOPE_SECS': 30
