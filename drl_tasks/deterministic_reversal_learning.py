@@ -813,8 +813,7 @@ class DeterministicReversalLearningSession(
 class TrainingDeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
-    block_side: int  # -1 for left or +1 for right
-    stim_end_position: int
+    block_side: None # you need this for online plots to work
 
 
 class TrainingDeterministicReversalLearningSession(
@@ -829,33 +828,19 @@ class TrainingDeterministicReversalLearningSession(
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-        self.block_side = int(
-            np.random.choice(
-                self.task_params.BLOCK_SIDES,
-                p=[
-                    self.task_params.PROBABILITY_LEFT,
-                    1 - self.task_params.PROBABILITY_LEFT,
-                ],
-            )
-        )  # -1 = left, +1 = right
+        self.block_side = None # you need this for online plots to work
 
     @property
-    def correct_end_position(self):
-        return int(
-            self.block_side * abs(self.task_params.STIM_END_POSITIONS[0])
-        )  # left block: -1 * |-35| = -35; right block: 1 * |-35| = 35
-
-    @property
-    def event_error(self):
+    def event_left(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
-            (1 if self.task_params.STIM_REVERSE else -1) * self.correct_end_position
-        ]
+            self.task_params.STIM_END_POSITIONS[0]
+        ] # -35
 
     @property
-    def event_reward(self):
+    def event_right(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
-            (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
-        ]
+            self.task_params.STIM_END_POSITIONS[1]
+        ] # +35
     
     def next_trial(self):
         self.trial_num += 1
@@ -865,12 +850,6 @@ class TrainingDeterministicReversalLearningSession(
         )  # no need to change anything here, because stimulus position is [0, 0]
 
     def draw_next_trial_info(self, *args, **kwargs):
-        # log block side
-        self.trials_table.at[self.trial_num, "block_side"] = self.block_side
-        # add stim end position to trials table
-        self.trials_table.at[self.trial_num, "stim_end_position"] = (
-            self.correct_end_position
-        )
         super().draw_next_trial_info()
 
     def get_state_machine_trial(self, i):
@@ -981,8 +960,8 @@ class TrainingDeterministicReversalLearningSession(
             output_actions=[self.bpod.actions.bonsai_closed_loop],
             state_change_conditions={
                 "Tup": "no_go",
-                self.event_error: "freeze_error",
-                self.event_reward: "freeze_reward",
+                self.event_left: "freeze_left",
+                self.event_right: "freeze_right",
             },
         )
 
@@ -1000,7 +979,7 @@ class TrainingDeterministicReversalLearningSession(
 
         # Error: Freeze the stimulus
         sma.add_state(
-            state_name="freeze_error",
+            state_name="freeze_left",
             state_timer=0,
             output_actions=[self.bpod.actions.bonsai_freeze_stim],
             state_change_conditions={"Tup": "reward"},
@@ -1010,7 +989,7 @@ class TrainingDeterministicReversalLearningSession(
         # freeze_error but how to differentiate which state to go to when Tup?).
         # Continue to hide_stim/exit_state once FEEDBACK_CORRECT_DELAY_SECS have passed.
         sma.add_state(
-            state_name="freeze_reward",
+            state_name="freeze_right",
             state_timer=0,
             output_actions=[self.bpod.actions.bonsai_freeze_stim],
             state_change_conditions={"Tup": "reward"},
@@ -1067,11 +1046,7 @@ class TrainingDeterministicReversalLearningSession(
             # Assert that we have exactly one outcome
             outcome_names = [
                 "correct",
-                "error",
                 "no_go",
-                "omit_correct",
-                "omit_error",
-                "omit_no_go",
             ]
             outcomes = [
                 name
@@ -1098,17 +1073,14 @@ class TrainingDeterministicReversalLearningSession(
             raise e
 
         # record the trial's outcome in the trials_table
-        self.trials_table.at[self.trial_num, "trial_correct"] = "correct" in outcome
-        if "correct" in outcome:
+        self.trials_table.at[self.trial_num, 'trial_correct'] = 'correct' in outcome
+        if not np.isnan(state_times["freeze_left"][0][0]):
             self.session_info.NTRIALS_CORRECT += 1
-            self.trials_table.at[self.trial_num, "response_side"] = np.sign(
-                self.correct_end_position
-            )  # np.sign returns 1 for positive and -1 for negative numbers
-        elif "error" in outcome:
-            self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
-                self.correct_end_position
-            )
-        elif "no_go" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = -1
+        elif not np.isnan(state_times["freeze_right"][0][0]):
+            self.session_info.NTRIALS_CORRECT += 1
+            self.trials_table.at[self.trial_num, "response_side"] = 1
+        else:
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
         # Only run cleanup if last trial or user pressed stop
@@ -1123,8 +1095,7 @@ class TrainingDeterministicReversalLearningSession(
         # construct info dict
         trial_info = self.trials_table.iloc[self.trial_num]
         info_dict = {
-            "Block Side": f"{trial_info.block_side}",
-            "Correct End Position": self.correct_end_position,
+            "Response Side": trial_info.response_side
         }
 
         # update info dict with extra_info dict
