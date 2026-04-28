@@ -856,6 +856,13 @@ class TrainingDeterministicReversalLearningSession(
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
         ]
+    
+    def next_trial(self):
+        self.trial_num += 1
+
+        self.draw_next_trial_info(
+            pleft=self.task_params.PROBABILITY_LEFT
+        )  # no need to change anything here, because stimulus position is [0, 0]
 
     def draw_next_trial_info(self, *args, **kwargs):
         # log block side
@@ -978,6 +985,19 @@ class TrainingDeterministicReversalLearningSession(
                 self.event_reward: "freeze_reward",
             },
         )
+
+        # No-go: hide the visual stimulus and play white noise. Go to exit_state after FEEDBACK_NOGO_DELAY_SECS.
+        sma.add_state(
+            state_name="no_go",
+            state_timer=self.feedback_nogo_delay,
+            output_actions=[
+                self.bpod.actions.bonsai_hide_stim,
+                self.bpod.actions.play_noise,
+            ],
+            state_change_conditions={"Tup": "exit_state"},
+        )
+
+
         # Error: Freeze the stimulus
         sma.add_state(
             state_name="freeze_error",
@@ -1047,7 +1067,11 @@ class TrainingDeterministicReversalLearningSession(
             # Assert that we have exactly one outcome
             outcome_names = [
                 "correct",
+                "error",
+                "no_go",
                 "omit_correct",
+                "omit_error",
+                "omit_no_go",
             ]
             outcomes = [
                 name
@@ -1080,6 +1104,12 @@ class TrainingDeterministicReversalLearningSession(
             self.trials_table.at[self.trial_num, "response_side"] = np.sign(
                 self.correct_end_position
             )  # np.sign returns 1 for positive and -1 for negative numbers
+        elif "error" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
+                self.correct_end_position
+            )
+        elif "no_go" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = 0
 
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):

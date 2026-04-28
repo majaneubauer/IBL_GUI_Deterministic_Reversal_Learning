@@ -10,6 +10,7 @@ license = {text = "MIT"}
 [project.entry-points."iblrig.plugins"]
 task_drl = "drl_tasks._drl_tasks_DeterministicReversalLearning.task:Session"
 task_hab_drl = "drl_tasks._drl_tasks_HabituationDeterministicReversalLearning.task:Session"
+task_train_drl = "drl_tasks._drl_tasks_TrainingDeterministicReversalLearning.task:Session"
 
 [project.scripts]
 view_session            = "drl_tasks.online_plots:online_plots_cli"

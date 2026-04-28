@@ -4,7 +4,7 @@ import yaml
 from iblrig.misc import get_task_arguments
 
 from drl_tasks.deterministic_reversal_learning import (
-    DeterministicReversalLearningSession,
+    TrainingDeterministicReversalLearningSession,
 )
 
 log = logging.getLogger(__name__)
@@ -14,20 +14,22 @@ with open(Path(__file__).parent.joinpath("task_parameters.yaml")) as f:
     DEFAULTS = yaml.safe_load(f)
 
 
-class Session(DeterministicReversalLearningSession):
+class Session(TrainingDeterministicReversalLearningSession):
     protocol_name = (
-        "DeterministicReversalLearning"  # here defined how it shows up in GUI
+        "TrainingDeterministicReversalLearning"  # here defined how it shows up in GUI
     )
 
     def __init__(
         self,
         *args,
+        response_window: int = DEFAULTS["RESPONSE_WINDOW"],
         reward_amount_ul: float = DEFAULTS["REWARD_AMOUNT_UL"],
         stim_gain: float = DEFAULTS["STIM_GAIN"],
         stop_miniscope_secs: int = DEFAULTS["STOP_MINISCOPE_SECS"],
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.task_params["RESPONSE_WINDOW"] = response_window
         self.task_params["REWARD_AMOUNT_UL"] = reward_amount_ul
         self.task_params["STIM_GAIN"] = stim_gain
         self.task_params["STOP_MINISCOPE_SECS"] = stop_miniscope_secs
@@ -36,6 +38,14 @@ class Session(DeterministicReversalLearningSession):
     def extra_parser():
         """:return: argparse.parser()"""
         parser = super(Session, Session).extra_parser()
+        parser.add_argument(
+            "--response_window",
+            option_strings=["--response_window"],
+            dest="response_window",
+            default=DEFAULTS["RESPONSE_WINDOW"],
+            type=int,
+            help="Response window (s)",
+        )
         parser.add_argument(
             "--reward_amount_ul",
             option_strings=["--reward_amount_ul"],
