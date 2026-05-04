@@ -369,7 +369,7 @@
                   </Expression>
                   <Expression xsi:type="Combinator">
                     <Combinator xsi:type="IntProperty">
-                      <Value>1</Value>
+                      <Value>0</Value>
                     </Combinator>
                   </Expression>
                   <Expression xsi:type="BehaviorSubject">
@@ -556,7 +556,7 @@
                       <gl:Location xsi:nil="true" />
                       <gl:WindowBorder>Resizable</gl:WindowBorder>
                       <gl:WindowState>Fullscreen</gl:WindowState>
-                      <gl:DisplayDevice>Second</gl:DisplayDevice>
+                      <gl:DisplayDevice>First</gl:DisplayDevice>
                       <gl:TargetRenderFrequency>60</gl:TargetRenderFrequency>
                       <gl:TargetUpdateFrequency xsi:nil="true" />
                       <gl:RenderState />
@@ -720,7 +720,7 @@
                   </Expression>
                   <Expression xsi:type="IncludeWorkflow" Path="BonVision:Primitives.DrawQuad.bonsai">
                     <ExtentX>0.2</ExtentX>
-                    <ExtentY>0.2</ExtentY>
+                    <ExtentY>0.25</ExtentY>
                     <LocationX>1.23333335</LocationX>
                     <LocationY>-1</LocationY>
                     <Layer>1</Layer>
