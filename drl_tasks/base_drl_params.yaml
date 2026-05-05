@@ -7,7 +7,7 @@
 'CONTRAST_SET_PROBABILITY_TYPE': uniform  # uniform or skew_zero: uniform makes the 0 contrast as likely as the others, while skew_zero makes it half as likely as other contrasts
 'CONTRAST_SET': [1.0]
 'DEAD_TIME': 0.5  # the length of time before entering the next trial. This plus ITI_DELAY_SECS define period of closed-loop grey screen
-'DECISION_PERIOD_SECS': 2
+'DECISION_PERIOD_SECS': 3 #2
 'FEEDBACK_CORRECT_DELAY_SECS': 1
 'FEEDBACK_ERROR_DELAY_SECS': 2
 'FEEDBACK_NOGO_DELAY_SECS': 2
@@ -28,7 +28,7 @@
 'QUIESCENT_PERIOD': 0.2
 'RECORD_AMBIENT_SENSOR_DATA': true
 'RECORD_SOUND': true
-'RESPONSE_WINDOW': 5
+'RESPONSE_WINDOW': 10 #5
 'REWARD_AMOUNT_UL': 10.0
 'REWARD_TYPE': Water 10% Sucrose
 'STIM_ANGLE': 0.0

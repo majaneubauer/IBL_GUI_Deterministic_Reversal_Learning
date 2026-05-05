@@ -523,7 +523,7 @@ class DeterministicReversalLearningSession(
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
             state_name="reset2_rotary_encoder",
-            state_timer=0.05,
+            state_timer=0.1, # used to be 0.05, set higher to hopefully avoid race condition better
             output_actions=[self.bpod.actions.rotary_encoder_reset],
             state_change_conditions={"Tup": "closed_loop"},
         )
