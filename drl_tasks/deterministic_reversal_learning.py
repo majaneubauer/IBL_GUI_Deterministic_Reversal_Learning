@@ -378,6 +378,19 @@ class DeterministicReversalLearningSession(
             -1
         )  # needs to be -1 and not 0 for next_trial condition to work
 
+    def start_mixin_bpod(self):
+        super().start_mixin_bpod()
+        module = self.bpod.rotary_encoder
+        module_port = f"Serial{module.serial_port}"
+        self.bpod.actions.update(
+            {
+                "bonsai_open_loop": (
+                    module_port,
+                    self.bpod._define_message(module, [ord("#"), 11]),
+                ),
+            }
+        )
+
     @property
     def correct_end_position(self):
         return int(
@@ -508,7 +521,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[],
+            output_actions=[self.bpod.actions.bonsai_open_loop],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
@@ -516,7 +529,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_tone],
+            output_actions=[self.bpod.actions.bonsai_open_loop, self.bpod.actions.play_tone],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
@@ -527,7 +540,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="reset2_rotary_encoder",
             state_timer=0.1,  # used to be 0.05, set higher to hopefully avoid race condition better
-            output_actions=[self.bpod.actions.rotary_encoder_reset],
+            output_actions=[self.bpod.actions.bonsai_open_loop, self.bpod.actions.rotary_encoder_reset],
             state_change_conditions={"Tup": "closed_loop"},
         )
 
