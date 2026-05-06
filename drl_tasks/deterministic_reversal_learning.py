@@ -166,6 +166,9 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
             "FileNameMic": self.paths.SESSION_RAW_DATA_FOLDER.joinpath(
                 "_iblrig_micData.raw.wav"
             ),
+            "FileNameScreen": self.paths.SESSION_RAW_DATA_FOLDER.joinpath(
+                "_iblrig_screenCapture.avi"
+            ),
             "RecordSound": self.task_params.RECORD_SOUND,
         }
         call_bonsai(workflow_file, parameters, wait=False, editor=False)
@@ -523,7 +526,7 @@ class DeterministicReversalLearningSession(
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
             state_name="reset2_rotary_encoder",
-            state_timer=0.1, # used to be 0.05, set higher to hopefully avoid race condition better
+            state_timer=0.1,  # used to be 0.05, set higher to hopefully avoid race condition better
             output_actions=[self.bpod.actions.rotary_encoder_reset],
             state_change_conditions={"Tup": "closed_loop"},
         )
@@ -813,7 +816,7 @@ class DeterministicReversalLearningSession(
 class TrainingDeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
-    block_side: None # you need this for online plots to work
+    block_side: None  # you need this for online plots to work
 
 
 class TrainingDeterministicReversalLearningSession(
@@ -828,20 +831,20 @@ class TrainingDeterministicReversalLearningSession(
         super().__init__(*args, **kwargs)
         # to help bonsai find Gabor2D_MN.bonsai file
         self.paths["VISUAL_STIM_FOLDER"] = self.get_task_directory().parent.parent
-        self.block_side = None # you need this for online plots to work
+        self.block_side = None  # you need this for online plots to work
 
     @property
     def event_left(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             self.task_params.STIM_END_POSITIONS[0]
-        ] # -35
+        ]  # -35
 
     @property
     def event_right(self):
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             self.task_params.STIM_END_POSITIONS[1]
-        ] # +35
-    
+        ]  # +35
+
     def next_trial(self):
         self.trial_num += 1
 
@@ -976,7 +979,6 @@ class TrainingDeterministicReversalLearningSession(
             state_change_conditions={"Tup": "exit_state"},
         )
 
-
         # Error: Freeze the stimulus
         sma.add_state(
             state_name="freeze_left",
@@ -1073,7 +1075,7 @@ class TrainingDeterministicReversalLearningSession(
             raise e
 
         # record the trial's outcome in the trials_table
-        self.trials_table.at[self.trial_num, 'trial_correct'] = 'correct' in outcome
+        self.trials_table.at[self.trial_num, "trial_correct"] = "correct" in outcome
         if not np.isnan(state_times["freeze_left"][0][0]):
             self.session_info.NTRIALS_CORRECT += 1
             self.trials_table.at[self.trial_num, "response_side"] = -1
@@ -1094,9 +1096,7 @@ class TrainingDeterministicReversalLearningSession(
     ):
         # construct info dict
         trial_info = self.trials_table.iloc[self.trial_num]
-        info_dict = {
-            "Response Side": trial_info.response_side
-        }
+        info_dict = {"Response Side": trial_info.response_side}
 
         # update info dict with extra_info dict
         if isinstance(extra_info, dict):
