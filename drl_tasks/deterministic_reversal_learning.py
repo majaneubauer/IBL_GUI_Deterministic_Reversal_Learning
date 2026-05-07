@@ -521,7 +521,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[self.bpod.actions.bonsai_open_loop],
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
@@ -530,7 +530,7 @@ class DeterministicReversalLearningSession(
             state_name="play_go_tone",
             state_timer=0.1,
             output_actions=[
-                self.bpod.actions.bonsai_open_loop,
+                self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.play_tone,
             ],
             state_change_conditions={
@@ -544,7 +544,7 @@ class DeterministicReversalLearningSession(
             state_name="reset2_rotary_encoder",
             state_timer=0.05,
             output_actions=[
-                self.bpod.actions.bonsai_open_loop,
+                self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.rotary_encoder_reset,
             ],
             state_change_conditions={"Tup": "closed_loop"},
