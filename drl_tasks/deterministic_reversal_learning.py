@@ -529,12 +529,23 @@ class DeterministicReversalLearningSession(
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
             state_name="reset2_rotary_encoder",
-            state_timer=0.05,
+            state_timer=0,
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.rotary_encoder_reset,
             ],
-            state_change_conditions={"Tup": "closed_loop"},
+            state_change_conditions={"Tup": "start_closed_loop"},
+        )
+
+        sma.add_state(
+            state_name="start_closed_loop",
+            state_timer=0.01,
+            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            state_change_conditions={
+                "Tup": "closed_loop",
+                self.event_error: "freeze_error",
+                self.event_reward: "freeze_reward",
+            },
         )
 
         # Start the closed loop state in which the animal controls the position of the visual stimulus by means of the
@@ -546,7 +557,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="closed_loop",
             state_timer=self.task_params.RESPONSE_WINDOW,
-            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            output_actions=[],
             state_change_conditions={
                 "Tup": "no_go",
                 self.event_error: "freeze_error",
