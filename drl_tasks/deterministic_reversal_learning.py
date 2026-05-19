@@ -167,7 +167,7 @@ class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
                 "_iblrig_micData.raw.wav"
             ),
             "FileNameScreen": self.paths.SESSION_RAW_DATA_FOLDER.joinpath(
-                "_iblrig_screenCapture.avi"
+                "_iblrig_screenCapture.raw.avi"
             ),
             "RecordSound": self.task_params.RECORD_SOUND,
         }
