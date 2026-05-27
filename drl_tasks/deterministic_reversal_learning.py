@@ -1259,7 +1259,7 @@ class HabituationDeterministicReversalLearningSession(
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[],
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
