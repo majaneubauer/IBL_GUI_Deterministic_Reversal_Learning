@@ -40,13 +40,58 @@
           <cv:ResizeInterpolation>NearestNeighbor</cv:ResizeInterpolation>
         </Combinator>
       </Expression>
+      <Expression xsi:type="ExternalizedMapping">
+        <Property Name="Path" DisplayName="FileNameLeftData" />
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="vid:ScreenCaptureStream">
+          <vid:HideCursor>false</vid:HideCursor>
+          <vid:CaptureRegion>
+            <vid:X>-1024</vid:X>
+            <vid:Y>0</vid:Y>
+            <vid:Width>1024</vid:Width>
+            <vid:Height>768</vid:Height>
+          </vid:CaptureRegion>
+          <vid:FrameInterval>0</vid:FrameInterval>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:Resize">
+          <cv:Size>
+            <cv:Width>1024</cv:Width>
+            <cv:Height>768</cv:Height>
+          </cv:Size>
+          <cv:Interpolation>Linear</cv:Interpolation>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="rx:WithLatestFrom" />
+      </Expression>
+      <Expression xsi:type="MemberSelector">
+        <Selector>Item2</Selector>
+      </Expression>
+      <Expression xsi:type="ExternalizedMapping">
+        <Property Name="FileName" DisplayName="FileNameScreen" />
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:VideoWriter">
+          <cv:FileName>C:\test\test.avi</cv:FileName>
+          <cv:Suffix>None</cv:Suffix>
+          <cv:Buffered>true</cv:Buffered>
+          <cv:Overwrite>true</cv:Overwrite>
+          <cv:FourCC>FMP4</cv:FourCC>
+          <cv:FrameRate>60</cv:FrameRate>
+          <cv:FrameSize>
+            <cv:Width>0</cv:Width>
+            <cv:Height>0</cv:Height>
+          </cv:FrameSize>
+          <cv:ResizeInterpolation>NearestNeighbor</cv:ResizeInterpolation>
+        </Combinator>
+      </Expression>
       <Expression xsi:type="MemberSelector">
         <Selector>Metadata</Selector>
       </Expression>
       <Expression xsi:type="IncludeWorkflow" Path="Extensions\GetFrameData.bonsai" />
-      <Expression xsi:type="ExternalizedMapping">
-        <Property Name="Path" DisplayName="FileNameLeftData" />
-      </Expression>
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="dsp:MatrixWriter">
           <dsp:Path>C:\iblrig_data\Subjects\_iblrig_test_mouse\2000-01-01\001\raw_video_data\_iblrig_leftCamera.frameData.bin</dsp:Path>
@@ -120,45 +165,6 @@
       </Expression>
       <Expression xsi:type="WorkflowOutput" />
       <Expression xsi:type="Combinator">
-        <Combinator xsi:type="vid:ScreenCaptureStream">
-          <vid:HideCursor>false</vid:HideCursor>
-          <vid:CaptureRegion>
-            <vid:X>-1024</vid:X>
-            <vid:Y>0</vid:Y>
-            <vid:Width>1024</vid:Width>
-            <vid:Height>768</vid:Height>
-          </vid:CaptureRegion>
-          <vid:FrameInterval>0</vid:FrameInterval>
-        </Combinator>
-      </Expression>
-      <Expression xsi:type="Combinator">
-        <Combinator xsi:type="cv:Resize">
-          <cv:Size>
-            <cv:Width>1024</cv:Width>
-            <cv:Height>768</cv:Height>
-          </cv:Size>
-          <cv:Interpolation>Linear</cv:Interpolation>
-        </Combinator>
-      </Expression>
-      <Expression xsi:type="ExternalizedMapping">
-        <Property Name="FileName" DisplayName="FileNameScreen" />
-      </Expression>
-      <Expression xsi:type="Combinator">
-        <Combinator xsi:type="cv:VideoWriter">
-          <cv:FileName>C:\test\test.avi</cv:FileName>
-          <cv:Suffix>None</cv:Suffix>
-          <cv:Buffered>true</cv:Buffered>
-          <cv:Overwrite>true</cv:Overwrite>
-          <cv:FourCC>FMP4</cv:FourCC>
-          <cv:FrameRate>60</cv:FrameRate>
-          <cv:FrameSize>
-            <cv:Width>0</cv:Width>
-            <cv:Height>0</cv:Height>
-          </cv:FrameSize>
-          <cv:ResizeInterpolation>NearestNeighbor</cv:ResizeInterpolation>
-        </Combinator>
-      </Expression>
-      <Expression xsi:type="Combinator">
         <Combinator xsi:type="gl:CreateWindow">
           <gl:Width>1</gl:Width>
           <gl:Height>1</gl:Height>
@@ -202,23 +208,26 @@
     <Edges>
       <Edge From="0" To="3" Label="Source2" />
       <Edge From="1" To="2" Label="Source1" />
-      <Edge From="1" To="4" Label="Source1" />
+      <Edge From="1" To="11" Label="Source1" />
       <Edge From="2" To="3" Label="Source1" />
-      <Edge From="4" To="5" Label="Source1" />
-      <Edge From="5" To="7" Label="Source1" />
+      <Edge From="2" To="7" Label="Source1" />
+      <Edge From="4" To="13" Label="Source2" />
+      <Edge From="5" To="6" Label="Source1" />
       <Edge From="6" To="7" Label="Source2" />
-      <Edge From="8" To="12" Label="Source1" />
+      <Edge From="7" To="8" Label="Source1" />
+      <Edge From="8" To="10" Label="Source2" />
       <Edge From="9" To="10" Label="Source1" />
-      <Edge From="10" To="11" Label="Source1" />
-      <Edge From="11" To="12" Label="Source2" />
-      <Edge From="12" To="14" Label="Source1" />
-      <Edge From="13" To="14" Label="Source2" />
-      <Edge From="15" To="17" Label="Source2" />
+      <Edge From="11" To="12" Label="Source1" />
+      <Edge From="12" To="13" Label="Source1" />
+      <Edge From="14" To="18" Label="Source1" />
+      <Edge From="15" To="16" Label="Source1" />
       <Edge From="16" To="17" Label="Source1" />
-      <Edge From="17" To="18" Label="Source1" />
-      <Edge From="19" To="20" Label="Source1" />
-      <Edge From="20" To="22" Label="Source1" />
-      <Edge From="21" To="22" Label="Source2" />
+      <Edge From="17" To="18" Label="Source2" />
+      <Edge From="18" To="20" Label="Source1" />
+      <Edge From="19" To="20" Label="Source2" />
+      <Edge From="21" To="23" Label="Source2" />
+      <Edge From="22" To="23" Label="Source1" />
+      <Edge From="23" To="24" Label="Source1" />
     </Edges>
   </Workflow>
 </WorkflowBuilder>
