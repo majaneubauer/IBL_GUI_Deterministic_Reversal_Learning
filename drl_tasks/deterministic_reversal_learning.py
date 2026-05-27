@@ -945,7 +945,7 @@ class TrainingDeterministicReversalLearningSession(
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[],
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
@@ -953,7 +953,7 @@ class TrainingDeterministicReversalLearningSession(
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.play_tone],
+            output_actions=[self.bpod.actions.bonsai_freeze_center, self.bpod.actions.play_tone],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
@@ -963,9 +963,20 @@ class TrainingDeterministicReversalLearningSession(
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
             state_name="reset2_rotary_encoder",
-            state_timer=0.05,
-            output_actions=[self.bpod.actions.rotary_encoder_reset],
-            state_change_conditions={"Tup": "closed_loop"},
+            state_timer=0,
+            output_actions=[self.bpod.actions.bonsai_freeze_center, self.bpod.actions.rotary_encoder_reset],
+            state_change_conditions={"Tup": "start_closed_loop"},
+        )
+
+        sma.add_state(
+            state_name="start_closed_loop",
+            state_timer=0.01,
+            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            state_change_conditions={
+                "Tup": "closed_loop",
+                self.event_left: "freeze_left",
+                self.event_right: "freeze_right",
+            },
         )
 
         # Start the closed loop state in which the animal controls the position of the visual stimulus by means of the
@@ -977,7 +988,7 @@ class TrainingDeterministicReversalLearningSession(
         sma.add_state(
             state_name="closed_loop",
             state_timer=self.task_params.RESPONSE_WINDOW,
-            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            output_actions=[],
             state_change_conditions={
                 "Tup": "no_go",
                 self.event_left: "freeze_left",
