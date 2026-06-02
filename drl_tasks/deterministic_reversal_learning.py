@@ -444,7 +444,7 @@ class DeterministicReversalLearningSession(
             state_name="trial_start",
             state_timer=0,  # ~100µs hardware irreducible delay
             state_change_conditions={"Tup": "reset_rotary_encoder"},
-            output_actions=[self.bpod.actions.stop_sound, ("BNC1", 255)],
+            output_actions=[self.bpod.actions.stop_sound],
         )
 
         # Reset the rotary encoder by sending the following opcodes via the modules serial interface
@@ -508,7 +508,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="open_loop",
             state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[self.bpod.actions.bonsai_freeze_center],
+            output_actions=[self.bpod.actions.bonsai_freeze_center, ("BNC1", 0)],
             state_change_conditions={"Tup": "play_go_tone"},
         )
 
@@ -519,6 +519,7 @@ class DeterministicReversalLearningSession(
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.play_tone,
+                ("BNC1", 0)
             ],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
@@ -533,6 +534,7 @@ class DeterministicReversalLearningSession(
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.rotary_encoder_reset,
+                ("BNC1", 0)
             ],
             state_change_conditions={"Tup": "start_closed_loop"},
         )
@@ -540,7 +542,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="start_closed_loop",
             state_timer=0.01,
-            output_actions=[self.bpod.actions.bonsai_closed_loop],
+            output_actions=[("BNC1", 0), self.bpod.actions.bonsai_closed_loop],
             state_change_conditions={
                 "Tup": "closed_loop",
                 self.event_error: "freeze_error",
@@ -603,7 +605,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="reward",
             state_timer=self.reward_time,
-            output_actions=[("Valve1", 255), ("BNC1", 255)],
+            output_actions=[("Valve1", 255)],
             state_change_conditions={"Tup": "correct"},
         )
         sma.add_state(
@@ -631,7 +633,7 @@ class DeterministicReversalLearningSession(
         sma.add_state(
             state_name="exit_state",
             state_timer=self.task_params.ITI_DELAY_SECS,
-            output_actions=[("BNC1", 255)],
+            output_actions=[],
             state_change_conditions={"Tup": "exit"},
         )
 
