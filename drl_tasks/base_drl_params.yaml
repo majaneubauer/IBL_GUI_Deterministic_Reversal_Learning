@@ -24,6 +24,7 @@
 'ITI_DELAY_SECS': 0.5  # this is the length of the ITI state at the end of the session. 0.5 seconds are added to it until the next trial start
 'NTRIALS': 220
 'PROBABILITY_LEFT': 0.5
+'PUNISHMENT_SECS': 0.5 # time valve is open for air puff
 'QUIESCENCE_THRESHOLDS': [-2, 2]
 'QUIESCENT_PERIOD': 0.2
 'RECORD_AMBIENT_SENSOR_DATA': true

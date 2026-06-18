@@ -395,6 +395,10 @@ class DeterministicReversalLearningSession(
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
         ]
+    
+    @property
+    def punishment_time(self):
+        return self.task_params['PUNISHMENT_SECS']
 
     def next_trial(self):
         self.trial_num += 1
@@ -570,11 +574,24 @@ class DeterministicReversalLearningSession(
         # No-go: hide the visual stimulus and play white noise. Go to exit_state after FEEDBACK_NOGO_DELAY_SECS.
         sma.add_state(
             state_name="no_go",
-            state_timer=self.feedback_nogo_delay,
+            state_timer=0,
             output_actions=[
                 self.bpod.actions.bonsai_hide_stim,
-                self.bpod.actions.play_noise,
             ],
+            state_change_conditions={"Tup": "no_go_punishment"},
+        )
+
+        sma.add_state(
+            state_name="no_go_punishment",
+            state_timer=self.punishment_time,
+            output_actions=[("Valve4", 255)],
+            state_change_conditions={"Tup": "no_go_error"},
+        )
+
+        sma.add_state(
+            state_name="no_go_error",
+            state_timer=self.feedback_nogo_delay - self.punishment_time,
+            output_actions=[],
             state_change_conditions={"Tup": "exit_state"},
         )
 
@@ -584,12 +601,18 @@ class DeterministicReversalLearningSession(
             state_name="freeze_error",
             state_timer=0,
             output_actions=[self.bpod.actions.bonsai_freeze_stim],
+            state_change_conditions={"Tup": "punishment"},
+        )
+        sma.add_state(
+            state_name="punishment",
+            state_timer=self.punishment_time,
+            output_actions=[("Valve4", 255)],
             state_change_conditions={"Tup": "error"},
         )
         sma.add_state(
             state_name="error",
-            state_timer=self.feedback_error_delay,
-            output_actions=[self.bpod.actions.play_noise],
+            state_timer=self.feedback_error_delay - self.punishment_time,
+            output_actions=[],
             state_change_conditions={"Tup": "hide_stim"},
         )
 
@@ -655,7 +678,7 @@ class DeterministicReversalLearningSession(
             outcome_names = [
                 "correct",
                 "error",
-                "no_go",
+                "no_go_error",
                 "omit_correct",
                 "omit_error",
                 "omit_no_go",
@@ -695,7 +718,7 @@ class DeterministicReversalLearningSession(
             self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
                 self.correct_end_position
             )
-        elif "no_go" in outcome:
+        elif "no_go_error" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
         # run bayesian strategy analysis
@@ -863,6 +886,10 @@ class TrainingDeterministicReversalLearningSession(
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             self.task_params.STIM_END_POSITIONS[1]
         ]  # +35
+    
+    @property
+    def punishment_time(self):
+        return self.task_params['PUNISHMENT_SECS']
 
     def next_trial(self):
         self.trial_num += 1
@@ -1001,11 +1028,24 @@ class TrainingDeterministicReversalLearningSession(
         # No-go: hide the visual stimulus and play white noise. Go to exit_state after FEEDBACK_NOGO_DELAY_SECS.
         sma.add_state(
             state_name="no_go",
-            state_timer=self.feedback_nogo_delay,
+            state_timer=0,
             output_actions=[
                 self.bpod.actions.bonsai_hide_stim,
-                self.bpod.actions.play_noise,
             ],
+            state_change_conditions={"Tup": "no_go_punishment"},
+        )
+
+        sma.add_state(
+            state_name="no_go_punishment",
+            state_timer=self.punishment_time,
+            output_actions=[("Valve4", 255)],
+            state_change_conditions={"Tup": "no_go_error"},
+        )
+
+        sma.add_state(
+            state_name="no_go_error",
+            state_timer=self.feedback_nogo_delay - self.punishment_time,
+            output_actions=[],
             state_change_conditions={"Tup": "exit_state"},
         )
 
@@ -1078,7 +1118,7 @@ class TrainingDeterministicReversalLearningSession(
             # Assert that we have exactly one outcome
             outcome_names = [
                 "correct",
-                "no_go",
+                "no_go_error",
             ]
             outcomes = [
                 name
