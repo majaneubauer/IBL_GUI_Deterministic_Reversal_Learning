@@ -399,7 +399,7 @@ class DeterministicReversalLearningSession(
     @property
     def punishment_time(self):
         return (
-            self.task_params["PUNISHMENT_SECS"] if self.task_params["NO_AIRPUFF"] else 0
+            self.task_params["PUNISHMENT_SECS"] if self.task_params["AIRPUFF"] else 0
         )
 
     def next_trial(self):
