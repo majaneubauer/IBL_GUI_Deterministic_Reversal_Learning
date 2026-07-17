@@ -22,6 +22,7 @@
 'INSTRUCTIVE_TONE_IDX': 5
 'INTERACTIVE_DELAY': 0.0
 'ITI_DELAY_SECS': 0.5  # this is the length of the ITI state at the end of the session. 0.5 seconds are added to it until the next trial start
+'NO_AIRPUFF': False # set this to true if you want no airpuff and just the absence of reward
 'NTRIALS': 220
 'PROBABILITY_LEFT': 0.5
 'PUNISHMENT_SECS': 0.5 # time valve is open for air puff

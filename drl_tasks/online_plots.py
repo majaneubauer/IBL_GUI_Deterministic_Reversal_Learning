@@ -90,7 +90,7 @@ SessionPath = Annotated[
     PlainSerializer(lambda x: str(x), return_type=str),
 ]
 
-NTRIALS_INIT = 360
+NTRIALS_INIT = 220
 
 
 @dataclass
@@ -1169,7 +1169,9 @@ class OnlinePlotsView(QMainWindow):
 
         # bpod data
         self.bpodWidget = BpodWidget(self, title="Bpod States and Input Channels")
-        self.bpodWidget.setMinimumHeight(170) # used to be 130, but with added Port2 and Port3 that is too small to see x-axis labels
+        self.bpodWidget.setMinimumHeight(
+            170
+        )  # used to be 130, but with added Port2 and Port3 that is too small to see x-axis labels
         self.bpodWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         layout.addWidget(self.bpodWidget, 3, 0, 1, 3)
 

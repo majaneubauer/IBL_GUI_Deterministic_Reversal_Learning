@@ -395,10 +395,12 @@ class DeterministicReversalLearningSession(
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             (-1 if self.task_params.STIM_REVERSE else 1) * self.correct_end_position
         ]
-    
+
     @property
     def punishment_time(self):
-        return self.task_params['PUNISHMENT_SECS']
+        return (
+            self.task_params["PUNISHMENT_SECS"] if self.task_params["NO_AIRPUFF"] else 0
+        )
 
     def next_trial(self):
         self.trial_num += 1
@@ -523,7 +525,7 @@ class DeterministicReversalLearningSession(
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.play_tone,
-                ("BNC1", 0)
+                ("BNC1", 0),
             ],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
@@ -538,7 +540,7 @@ class DeterministicReversalLearningSession(
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
                 self.bpod.actions.rotary_encoder_reset,
-                ("BNC1", 0)
+                ("BNC1", 0),
             ],
             state_change_conditions={"Tup": "start_closed_loop"},
         )
@@ -886,10 +888,10 @@ class TrainingDeterministicReversalLearningSession(
         return self.device_rotary_encoder.THRESHOLD_EVENTS[
             self.task_params.STIM_END_POSITIONS[1]
         ]  # +35
-    
+
     @property
     def punishment_time(self):
-        return self.task_params['PUNISHMENT_SECS']
+        return self.task_params["PUNISHMENT_SECS"]
 
     def next_trial(self):
         self.trial_num += 1
@@ -982,7 +984,10 @@ class TrainingDeterministicReversalLearningSession(
         sma.add_state(
             state_name="play_go_tone",
             state_timer=0.1,
-            output_actions=[self.bpod.actions.bonsai_freeze_center, self.bpod.actions.play_tone],
+            output_actions=[
+                self.bpod.actions.bonsai_freeze_center,
+                self.bpod.actions.play_tone,
+            ],
             state_change_conditions={
                 "Tup": "reset2_rotary_encoder",
                 "BNC2High": "reset2_rotary_encoder",
@@ -993,7 +998,10 @@ class TrainingDeterministicReversalLearningSession(
         sma.add_state(
             state_name="reset2_rotary_encoder",
             state_timer=0,
-            output_actions=[self.bpod.actions.bonsai_freeze_center, self.bpod.actions.rotary_encoder_reset],
+            output_actions=[
+                self.bpod.actions.bonsai_freeze_center,
+                self.bpod.actions.rotary_encoder_reset,
+            ],
             state_change_conditions={"Tup": "start_closed_loop"},
         )
 
