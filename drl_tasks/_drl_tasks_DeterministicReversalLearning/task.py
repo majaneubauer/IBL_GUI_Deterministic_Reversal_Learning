@@ -26,6 +26,7 @@ class Session(DeterministicReversalLearningSession):
         reward_amount_ul: float = DEFAULTS['REWARD_AMOUNT_UL'],
         stim_gain: float = DEFAULTS['STIM_GAIN'],
         stop_miniscope_secs: int = DEFAULTS['STOP_MINISCOPE_SECS'],
+        airpuff: float = DEFAULTS['AIRPUFF'],
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -33,6 +34,7 @@ class Session(DeterministicReversalLearningSession):
         self.task_params['REWARD_AMOUNT_UL'] = reward_amount_ul
         self.task_params['STIM_GAIN'] = stim_gain
         self.task_params['STOP_MINISCOPE_SECS'] = stop_miniscope_secs
+        self.task_params['AIRPUFF'] = str(airpuff).lower() == 'true'
 
     @staticmethod
     def extra_parser():
@@ -69,6 +71,15 @@ class Session(DeterministicReversalLearningSession):
             default=DEFAULTS['STOP_MINISCOPE_SECS'],
             type=int,
             help='Length of HIGH signal to stop miniscope at the end of one session',
+        )
+        parser.add_argument(
+            '--airpuff',
+            option_strings=['--airpuff'],
+            dest='airpuff',
+            default=str(DEFAULTS['AIRPUFF']),
+            choices=['True', 'False'],
+            type=str,
+            help='Airpuff as punishment/negative feedback',
         )
         return parser
 
