@@ -1231,9 +1231,11 @@ class HabituationDeterministicReversalLearningSession(
         self.bonsai_visual_udp_client = ExtendedOSCClient(port=7110)
 
     def draw_next_trial_info(self, *args, **kwargs):
-        # update trial table fields specific to habituation choice world
-        self.trials_table.at[self.trial_num, "delay_to_stim_end_position"] = (
-            np.random.normal(self.task_params.DELAY_TO_STIM_END_POSITION, 2)
+        # update trial table fields specific to habituation choice world --> clip so that only positive values
+        self.trials_table.at[self.trial_num, "delay_to_stim_end_position"] = np.clip(
+            (np.random.normal(self.task_params.DELAY_TO_STIM_END_POSITION, 2)),
+            0.1,
+            10.0
         )
         # select stim end position
         self.trials_table.at[self.trial_num, "stim_end_position"] = int(
