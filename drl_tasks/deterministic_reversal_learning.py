@@ -33,8 +33,8 @@ from iblrig.base_tasks import OSCClient
 from drl_tasks.path_helper import iterate_previous_sessions
 from iblrig.raw_data_loaders import load_task_jsonable
 
-log = logging.getLogger(__name__)
-
+#log = logging.getLogger(__name__)
+log = logging.getLogger(f"iblrig.{__name__}") # so that custom log messages also show up in .log file and not just in GUI
 
 class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
 
