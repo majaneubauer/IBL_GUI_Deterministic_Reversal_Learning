@@ -1,4 +1,4 @@
 'DELAY_TO_STIM_END_POSITION': 5  # mean of normal dist with sd of 2
 'NTRIALS': 1000 # high enough to last at least 1 hour of habituation
 'REWARD_AMOUNT_UL': 10.0
-'STOP_MINISCOPE_SECS': 30
+'STOP_MINISCOPE_SECS': 15
