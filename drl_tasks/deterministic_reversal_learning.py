@@ -316,6 +316,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     precision: float
     success_total: float
     failure_total: float
+    punishment_valve_time: NonNegativeFloat
 
 
 class DeterministicReversalLearningSession(
@@ -737,6 +738,9 @@ class DeterministicReversalLearningSession(
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
 
+        # store punishment_valve_time in trials_table
+        self.trials_table.at[self.trial_num, 'punishment_valve_time'] = self.punishment_time
+
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
             self.stop_miniscope()
@@ -872,6 +876,7 @@ class TrainingDeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData)
     """Pydantic Model for Trial Data, extended from :class:`~.iblrig.base_choice_world.ActiveChoiceWorldTrialData`."""
 
     block_side: None  # you need this for online plots to work
+    punishment_valve_time: NonNegativeFloat
 
 
 class TrainingDeterministicReversalLearningSession(
@@ -1184,6 +1189,9 @@ class TrainingDeterministicReversalLearningSession(
             self.trials_table.at[self.trial_num, "response_side"] = 1
         else:
             self.trials_table.at[self.trial_num, "response_side"] = 0
+
+        # store punishment_valve_time in trials_table
+        self.trials_table.at[self.trial_num, 'punishment_valve_time'] = self.punishment_time
 
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):

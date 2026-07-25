@@ -404,7 +404,7 @@ class StimulusDelegate(QStyledItemDelegate):
 
 class ResponseTimeDelegate(QStyledItemDelegate):
     norm_min = 0.1
-    norm_max = 102.0
+    norm_max = 10.5 # response times in our case maximum of 10.1, old value IBL is 102.0
     norm_div = np.log(norm_max / norm_min)
     color_correct = QColor(0, 107, 90)
     color_error = QColor(219, 67, 37)
