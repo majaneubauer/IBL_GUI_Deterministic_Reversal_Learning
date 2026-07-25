@@ -669,9 +669,20 @@ class DeterministicReversalLearningSession(
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        response_time = (
-            state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
-        )
+        
+        # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
+        # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
+        try:
+            response_time = (
+                state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
+            )
+        except (KeyError, IndexError, TypeError):
+            response_time = float("nan")
+
+        # in case of NaN values or negative response times, set response_time to 0
+        if np.isnan(response_time) or response_time < 0:
+            response_time = 0.0
+        
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
@@ -1116,9 +1127,20 @@ class TrainingDeterministicReversalLearningSession(
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        response_time = (
-            state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
-        )
+        
+        # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
+        # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
+        try:
+            response_time = (
+                state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
+            )
+        except (KeyError, IndexError, TypeError):
+            response_time = float("nan")
+
+        # in case of NaN values or negative response times, set response_time to 0
+        if np.isnan(response_time) or response_time < 0:
+            response_time = 0.0
+        
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
