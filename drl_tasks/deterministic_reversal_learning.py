@@ -514,9 +514,30 @@ class DeterministicReversalLearningSession(
         # Start the open loop state in which the animal can move the wheel but wheel movement is not coupled to the stimulus position.
         sma.add_state(
             state_name="open_loop",
-            state_timer=self.task_params.DECISION_PERIOD_SECS,
-            output_actions=[self.bpod.actions.bonsai_freeze_center, ("BNC1", 0)],
-            state_change_conditions={"Tup": "play_go_tone"},
+            state_timer=self.task_params.DECISION_PERIOD_SECS - 0.2,
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
+            state_change_conditions={"Tup": "reset2_rotary_encoder"},
+        )
+
+        sma.add_state(
+            state_name="reset2_rotary_encoder",
+            state_timer=0,
+            output_actions=[
+                self.bpod.actions.bonsai_freeze_center,
+                self.bpod.actions.rotary_encoder_reset,
+            ],
+            state_change_conditions={"Tup": "open_loop_quiescence"},
+        )
+
+        sma.add_state(
+            state_name="open_loop_quiescence",
+            state_timer=0.2,
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
+            state_change_conditions={
+                "Tup": "play_go_tone",
+                self.movement_left: "reset2_rotary_encoder",
+                self.movement_right: "reset2_rotary_encoder",
+            },
         )
 
         # Play go tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
@@ -529,14 +550,14 @@ class DeterministicReversalLearningSession(
                 ("BNC1", 0),
             ],
             state_change_conditions={
-                "Tup": "reset2_rotary_encoder",
-                "BNC2High": "reset2_rotary_encoder",
+                "Tup": "reset3_rotary_encoder",
+                "BNC2High": "reset3_rotary_encoder",
             },
         )
 
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
-            state_name="reset2_rotary_encoder",
+            state_name="reset3_rotary_encoder",
             state_timer=0,
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
@@ -668,14 +689,14 @@ class DeterministicReversalLearningSession(
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
-        # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
+        # It is defined as the time passing between the end of `open_loop_quiescence` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
         
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
             response_time = (
-                state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
+                state_times["closed_loop"][0][1] - state_times["open_loop_quiescence"][0][1]
             )
         except (KeyError, IndexError, TypeError):
             response_time = float("nan")
@@ -991,9 +1012,30 @@ class TrainingDeterministicReversalLearningSession(
         # Start the open loop state in which the animal can move the wheel but wheel movement is not coupled to the stimulus position.
         sma.add_state(
             state_name="open_loop",
-            state_timer=self.task_params.DECISION_PERIOD_SECS,
+            state_timer=self.task_params.DECISION_PERIOD_SECS - 0.2,
             output_actions=[self.bpod.actions.bonsai_freeze_center],
-            state_change_conditions={"Tup": "play_go_tone"},
+            state_change_conditions={"Tup": "reset2_rotary_encoder"},
+        )
+
+        sma.add_state(
+            state_name="reset2_rotary_encoder",
+            state_timer=0,
+            output_actions=[
+                self.bpod.actions.bonsai_freeze_center,
+                self.bpod.actions.rotary_encoder_reset,
+            ],
+            state_change_conditions={"Tup": "open_loop_quiescence"},
+        )
+
+        sma.add_state(
+            state_name="open_loop_quiescence",
+            state_timer=0.2,
+            output_actions=[self.bpod.actions.bonsai_freeze_center],
+            state_change_conditions={
+                "Tup": "play_go_tone",
+                self.movement_left: "reset2_rotary_encoder",
+                self.movement_right: "reset2_rotary_encoder",
+            },
         )
 
         # Play go tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
@@ -1005,14 +1047,14 @@ class TrainingDeterministicReversalLearningSession(
                 self.bpod.actions.play_tone,
             ],
             state_change_conditions={
-                "Tup": "reset2_rotary_encoder",
-                "BNC2High": "reset2_rotary_encoder",
+                "Tup": "reset3_rotary_encoder",
+                "BNC2High": "reset3_rotary_encoder",
             },
         )
 
         # Reset rotary encoder (see above). Move on after brief delay (to avoid a race conditions in the bonsai flow).
         sma.add_state(
-            state_name="reset2_rotary_encoder",
+            state_name="reset3_rotary_encoder",
             state_timer=0,
             output_actions=[
                 self.bpod.actions.bonsai_freeze_center,
@@ -1130,14 +1172,14 @@ class TrainingDeterministicReversalLearningSession(
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
-        # It is defined as the time passing between the end of `open_loop` and the end of `closed_loop`.
+        # It is defined as the time passing between the end of `open_loop_quiescence` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
         
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
             response_time = (
-                state_times["closed_loop"][0][1] - state_times["open_loop"][0][1]
+                state_times["closed_loop"][0][1] - state_times["open_loop_quiescence"][0][1]
             )
         except (KeyError, IndexError, TypeError):
             response_time = float("nan")
