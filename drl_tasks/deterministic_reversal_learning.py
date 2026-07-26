@@ -749,12 +749,13 @@ class DeterministicReversalLearningSession(
             self.trials_table.at[self.trial_num, "response_side"] = np.sign(
                 self.correct_end_position
             )  # np.sign returns 1 for positive and -1 for negative numbers
+        # check this before because no_go_error contains string"error"
+        elif "no_go_error" in outcome:
+            self.trials_table.at[self.trial_num, "response_side"] = 0
         elif "error" in outcome:
             self.trials_table.at[self.trial_num, "response_side"] = -np.sign(
                 self.correct_end_position
             )
-        elif "no_go_error" in outcome:
-            self.trials_table.at[self.trial_num, "response_side"] = 0
 
         # run bayesian strategy analysis
         self.bayesian_strategy_analysis()
@@ -776,6 +777,7 @@ class DeterministicReversalLearningSession(
         info_dict = {
             "Block Side": f"{trial_info.block_side}",
             "Correct End Position": self.correct_end_position,
+            "Response Side": trial_info.response_side,
             "N Trials Block": self.block_trial_counter
             + 1,  # +1 because counter starts at 0
             "Alpha": trial_info.alpha,

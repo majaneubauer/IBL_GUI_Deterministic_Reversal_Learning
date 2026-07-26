@@ -251,13 +251,13 @@ class TrialsTableModel(DataFrameTableModel):
     ) -> Any | None:
         if index.isValid() and role == Qt.ItemDataRole.StatusTipRole:
             trial = index.siblingAtColumn(0).data()
-            position = index.siblingAtColumn(1).data()
+            response_side = index.siblingAtColumn(1).data()
             contrast = index.siblingAtColumn(2).data() * 100
             debias = index.siblingAtColumn(3).data()
             outcome = index.siblingAtColumn(4).data()
             timing = index.siblingAtColumn(5).data()
             tip = (
-                f'Trial {trial}: {contrast:g}% contrast / {abs(position):g}° {"right" if position > 0 else "left"} '
+                f'Trial {trial}: {contrast:g}% contrast / 35° {"right" if response_side > 0 else "left"} '
                 f'{"/ debiasing " if debias else ""}/ {outcome}'
             )
             return tip + ("." if outcome == "no-go" else f" after {timing:0.2f} s.")
@@ -819,7 +819,7 @@ class OnlinePlotsModel(QObject):
         self._bpod_data.extend(bpod_data)
 
         # update data for trial history table
-        table = self._trial_data[["trial_num", "position", "contrast"]].copy()
+        table = self._trial_data[["trial_num", "response_side", "contrast"]].copy()
         table.columns = ["Trial", "Stimulus", "Contrast"]
         table["Debias"] = self._trial_data.get("debias_trial", False)
         table["Outcome"] = self._trial_data.apply(
@@ -1163,7 +1163,7 @@ class OnlinePlotsView(QMainWindow):
         )
         self.rewardWidget.plotItem.setTitle("Reward Amount", color="k")
         self.rewardWidget.plotItem.getAxis("left").setLabel("Total Reward Volume (μl)")
-        self.rewardWidget.plotItem.setYRange(0, 1050, padding=0)
+        self.rewardWidget.plotItem.setYRange(0, 2300, padding=0)
         self.rewardWidget.plotItem.hoverEvent = self.mouseOverBarChart
         layout.addWidget(self.rewardWidget, 2, 2, 1, 1)
 
