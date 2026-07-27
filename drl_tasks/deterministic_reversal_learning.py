@@ -689,14 +689,14 @@ class DeterministicReversalLearningSession(
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
-        # It is defined as the time passing between the end of `open_loop_quiescence` and the end of `closed_loop`.
+        # It is defined as the time passing between the start of `play_go_tone` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
         
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
             response_time = (
-                state_times["closed_loop"][0][1] - state_times["open_loop_quiescence"][0][1]
+                state_times["closed_loop"][0][1] - state_times["play_go_tone"][0][0]
             )
         except (KeyError, IndexError, TypeError):
             response_time = float("nan")
@@ -780,12 +780,12 @@ class DeterministicReversalLearningSession(
             "Response Side": trial_info.response_side,
             "N Trials Block": self.block_trial_counter
             + 1,  # +1 because counter starts at 0
-            "Alpha": trial_info.alpha,
-            "Beta": trial_info.beta,
-            "MAP Probability": trial_info.map_probability,
-            "Precision": trial_info.precision,
-            "Success Total": trial_info.success_total,
-            "Failure Total": trial_info.failure_total,
+            "Alpha": f"{trial_info.alpha:.3f}",
+            "Beta": f"{trial_info.beta:.3f}",
+            "MAP Probability": f"{trial_info.map_probability:.3f}",
+            "Precision": f"{trial_info.precision:.3f}",
+            "Success Total": f"{trial_info.success_total:.3f}",
+            "Failure Total": f"{trial_info.failure_total:.3f}",
         }
 
         # update info dict with extra_info dict
@@ -1174,14 +1174,14 @@ class TrainingDeterministicReversalLearningSession(
     def trial_completed(self, bpod_data: dict) -> None:
         # removed assertion error for position = 0 cause that is what we want
         # Get the response time from the behaviour data.
-        # It is defined as the time passing between the end of `open_loop_quiescence` and the end of `closed_loop`.
+        # It is defined as the time passing between the start of `play_go_tone` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
         
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
             response_time = (
-                state_times["closed_loop"][0][1] - state_times["open_loop_quiescence"][0][1]
+                state_times["closed_loop"][0][1] - state_times["play_go_tone"][0][0]
             )
         except (KeyError, IndexError, TypeError):
             response_time = float("nan")

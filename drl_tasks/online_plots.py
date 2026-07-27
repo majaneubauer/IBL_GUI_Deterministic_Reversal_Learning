@@ -90,7 +90,7 @@ SessionPath = Annotated[
     PlainSerializer(lambda x: str(x), return_type=str),
 ]
 
-NTRIALS_INIT = 220
+NTRIALS_INIT = 225
 
 
 @dataclass
@@ -976,7 +976,7 @@ class OnlinePlotsModel(QObject):
 
     def blockBoundariesUpToTrial(self, trial: int, block_length: int):
         max_block = self._nTrialsUpTo(trial) // block_length
-        return [(i * block_length - 1) for i in range(1, max_block + 1)]
+        return [(i * block_length - 1) for i in range(1, max_block + 1) if (i * block_length - 1) < NTRIALS_INIT - 1]
 
     def percentCorrectUpToTrial(self, trial: int) -> float:
         return (
@@ -1135,7 +1135,7 @@ class OnlinePlotsView(QMainWindow):
         )
         # plot block lines
         block_lines = np.arange(self.block_length - 1, NTRIALS_INIT, self.block_length)
-        for line in block_lines:
+        for line in block_lines[0:-1]: # do not plot the last line cause there is no reversal check
             vline = pg.InfiniteLine(
                 pos=line, angle=90, pen=pg.mkPen("lightgrey", width=1)  # vertical
             )
