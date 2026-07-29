@@ -418,7 +418,7 @@ class DeterministicReversalLearningSession(
         if (
             self.block_trial_counter % self.task_params.BLOCK_LENGTH == 0
         ):  # modulo operator ensures that this is only checked at the end of a block
-            if current_map is not None and current_map >= 0.5:
+            if current_map is not None and current_map >= 0.80:
                 self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
                 self.block_trial_counter = 0
                 log.warning(

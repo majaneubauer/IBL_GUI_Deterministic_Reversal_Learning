@@ -90,7 +90,7 @@ SessionPath = Annotated[
     PlainSerializer(lambda x: str(x), return_type=str),
 ]
 
-NTRIALS_INIT = 225
+NTRIALS_INIT = 240
 
 
 @dataclass
@@ -1098,6 +1098,7 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidgetcont.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidgetcont.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
+        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.8, 0, "blue"))
         self.bsaWidgetcont.plotItem.setYRange(0, 1, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurvecont = self.bsaWidgetcont.plot(
@@ -1122,6 +1123,7 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidget.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidget.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
+        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.80, 0, "blue"))
         self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
         self.bsaWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
