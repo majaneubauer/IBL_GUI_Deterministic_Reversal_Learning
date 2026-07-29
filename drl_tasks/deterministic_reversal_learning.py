@@ -33,8 +33,11 @@ from iblrig.base_tasks import OSCClient
 from drl_tasks.path_helper import iterate_previous_sessions
 from iblrig.raw_data_loaders import load_task_jsonable
 
-#log = logging.getLogger(__name__)
-log = logging.getLogger(f"iblrig.{__name__}") # so that custom log messages also show up in .log file and not just in GUI
+# log = logging.getLogger(__name__)
+log = logging.getLogger(
+    f"iblrig.{__name__}"
+)  # so that custom log messages also show up in .log file and not just in GUI
+
 
 class DeterministicReversalLearningBaseSession(ChoiceWorldSession):
 
@@ -317,6 +320,7 @@ class DeterministicReversalLearningTrialData(ActiveChoiceWorldTrialData):
     success_total: float
     failure_total: float
     punishment_valve_time: NonNegativeFloat
+    reversal_criterion: float
 
 
 class DeterministicReversalLearningSession(
@@ -399,9 +403,7 @@ class DeterministicReversalLearningSession(
 
     @property
     def punishment_time(self):
-        return (
-            self.task_params["PUNISHMENT_SECS"] if self.task_params["AIRPUFF"] else 0
-        )
+        return self.task_params["PUNISHMENT_SECS"] if self.task_params["AIRPUFF"] else 0
 
     def next_trial(self):
         self.trial_num += 1
@@ -415,10 +417,11 @@ class DeterministicReversalLearningSession(
         )
 
         # deterministic reversal
+        self.reversal_criterion = 0.80
         if (
             self.block_trial_counter % self.task_params.BLOCK_LENGTH == 0
         ):  # modulo operator ensures that this is only checked at the end of a block
-            if current_map is not None and current_map >= 0.80:
+            if current_map is not None and current_map >= self.reversal_criterion:
                 self.block_side *= -1  # flip block: -1*-1 = 1; 1*-1 = -1
                 self.block_trial_counter = 0
                 log.warning(
@@ -439,6 +442,10 @@ class DeterministicReversalLearningSession(
         # add stim end position to trials table
         self.trials_table.at[self.trial_num, "stim_end_position"] = (
             self.correct_end_position
+        )
+        # log reversal criterion
+        self.trials_table.at[self.trial_num, "reversal_criterion"] = (
+            self.reversal_criterion
         )
         super().draw_next_trial_info()
 
@@ -691,7 +698,7 @@ class DeterministicReversalLearningSession(
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the start of `play_go_tone` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        
+
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
@@ -704,7 +711,7 @@ class DeterministicReversalLearningSession(
         # in case of NaN values or negative response times, set response_time to 0
         if np.isnan(response_time) or response_time < 0:
             response_time = 0.0
-        
+
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
@@ -761,7 +768,9 @@ class DeterministicReversalLearningSession(
         self.bayesian_strategy_analysis()
 
         # store punishment_valve_time in trials_table
-        self.trials_table.at[self.trial_num, 'punishment_valve_time'] = self.punishment_time
+        self.trials_table.at[self.trial_num, "punishment_valve_time"] = (
+            self.punishment_time
+        )
 
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
@@ -1176,7 +1185,7 @@ class TrainingDeterministicReversalLearningSession(
         # Get the response time from the behaviour data.
         # It is defined as the time passing between the start of `play_go_tone` and the end of `closed_loop`.
         state_times = bpod_data["States timestamps"]
-        
+
         # fail safe in case closed loop state is not reached, i.e., mouse moved wheel exactly right during start_closed_loop
         # all states should be listed in bpod_data even as [[np.nan, np.nan]], but try/except is safe
         try:
@@ -1189,7 +1198,7 @@ class TrainingDeterministicReversalLearningSession(
         # in case of NaN values or negative response times, set response_time to 0
         if np.isnan(response_time) or response_time < 0:
             response_time = 0.0
-        
+
         self.trials_table.at[self.trial_num, "response_time"] = response_time
 
         try:
@@ -1235,7 +1244,9 @@ class TrainingDeterministicReversalLearningSession(
             self.trials_table.at[self.trial_num, "response_side"] = 0
 
         # store punishment_valve_time in trials_table
-        self.trials_table.at[self.trial_num, 'punishment_valve_time'] = self.punishment_time
+        self.trials_table.at[self.trial_num, "punishment_valve_time"] = (
+            self.punishment_time
+        )
 
         # Only run cleanup if last trial or user pressed stop
         if self.stopped or self.trial_num >= (self.task_params.NTRIALS - 1):
@@ -1309,7 +1320,7 @@ class HabituationDeterministicReversalLearningSession(
         self.trials_table.at[self.trial_num, "delay_to_stim_end_position"] = np.clip(
             (np.random.normal(self.task_params.DELAY_TO_STIM_END_POSITION, 2)),
             0.1,
-            10.0
+            10.0,
         )
         # select stim end position
         self.trials_table.at[self.trial_num, "stim_end_position"] = int(
