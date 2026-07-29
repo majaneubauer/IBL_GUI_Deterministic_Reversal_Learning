@@ -404,7 +404,9 @@ class StimulusDelegate(QStyledItemDelegate):
 
 class ResponseTimeDelegate(QStyledItemDelegate):
     norm_min = 0.1
-    norm_max = 10.5 # response times in our case maximum of 10.1, old value IBL is 102.0
+    norm_max = (
+        10.5  # response times in our case maximum of 10.1, old value IBL is 102.0
+    )
     norm_div = np.log(norm_max / norm_min)
     color_correct = QColor(0, 107, 90)
     color_error = QColor(219, 67, 37)
@@ -976,7 +978,11 @@ class OnlinePlotsModel(QObject):
 
     def blockBoundariesUpToTrial(self, trial: int, block_length: int):
         max_block = self._nTrialsUpTo(trial) // block_length
-        return [(i * block_length - 1) for i in range(1, max_block + 1) if (i * block_length - 1) < NTRIALS_INIT - 1]
+        return [
+            (i * block_length - 1)
+            for i in range(1, max_block + 1)
+            if (i * block_length - 1) < self.nTrials() - 1
+        ]
 
     def percentCorrectUpToTrial(self, trial: int) -> float:
         return (
@@ -1125,7 +1131,9 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.80, 0, "blue"))
         self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
-        self.bsaWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
+        self.bsaWidget.plotItem.setXRange(
+            0, self.model.nTrials(), padding=0.025
+        )  # NTRIALS_INIT
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurve = self.bsaWidget.plot(
             [],
@@ -1136,8 +1144,12 @@ class OnlinePlotsView(QMainWindow):
             symbolBrush="k",
         )
         # plot block lines
-        block_lines = np.arange(self.block_length - 1, NTRIALS_INIT, self.block_length)
-        for line in block_lines[0:-1]: # do not plot the last line cause there is no reversal check
+        block_lines = np.arange(
+            self.block_length - 1, self.model.nTrials(), self.block_length
+        )
+        for line in block_lines[
+            0:-1
+        ]:  # do not plot the last line cause there is no reversal check
             vline = pg.InfiniteLine(
                 pos=line, angle=90, pen=pg.mkPen("lightgrey", width=1)  # vertical
             )
