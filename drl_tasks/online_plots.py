@@ -981,7 +981,7 @@ class OnlinePlotsModel(QObject):
         return [
             (i * block_length - 1)
             for i in range(1, max_block + 1)
-            if (i * block_length - 1) < self.nTrials() - 1
+            if (i * block_length - 1) < NTRIALS_INIT - 1
         ]
 
     def percentCorrectUpToTrial(self, trial: int) -> float:
@@ -1095,6 +1095,7 @@ class OnlinePlotsView(QMainWindow):
         layout.addWidget(self.chronometricWidget, 2, 1, 1, 1)
 
         # Bayesian strategy analysis continuous update on each trial
+        self.reversal_criterion = self.model.task_settings.get("REVERSAL_CRITERION")
         self.block_length = self.model.task_settings.get("BLOCK_LENGTH")
         self.bsa_block_lines = []
         self.bsaWidgetcont = PlotWidget(parent=self)
@@ -1104,7 +1105,7 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidgetcont.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidgetcont.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
-        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.8, 0, "blue"))
+        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(self.reversal_criterion, 0, "blue"))
         self.bsaWidgetcont.plotItem.setYRange(0, 1, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurvecont = self.bsaWidgetcont.plot(
@@ -1129,11 +1130,11 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidget.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidget.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
-        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.80, 0, "blue"))
+        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(self.reversal_criterion, 0, "blue"))
         self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
         self.bsaWidget.plotItem.setXRange(
-            0, self.model.nTrials(), padding=0.025
-        )  # NTRIALS_INIT
+            0, NTRIALS_INIT, padding=0.025
+        )
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurve = self.bsaWidget.plot(
             [],
@@ -1145,7 +1146,7 @@ class OnlinePlotsView(QMainWindow):
         )
         # plot block lines
         block_lines = np.arange(
-            self.block_length - 1, self.model.nTrials(), self.block_length
+            self.block_length - 1, NTRIALS_INIT, self.block_length
         )
         for line in block_lines[
             0:-1

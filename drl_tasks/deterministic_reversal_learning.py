@@ -405,6 +405,10 @@ class DeterministicReversalLearningSession(
     def punishment_time(self):
         return self.task_params["PUNISHMENT_SECS"] if self.task_params["AIRPUFF"] else 0
 
+    @property
+    def reversal_criterion(self):
+        return self.task_params["REVERSAL_CRITERION"]
+
     def next_trial(self):
         self.trial_num += 1
 
@@ -417,7 +421,6 @@ class DeterministicReversalLearningSession(
         )
 
         # deterministic reversal
-        self.reversal_criterion = 0.80
         if (
             self.block_trial_counter % self.task_params.BLOCK_LENGTH == 0
         ):  # modulo operator ensures that this is only checked at the end of a block
