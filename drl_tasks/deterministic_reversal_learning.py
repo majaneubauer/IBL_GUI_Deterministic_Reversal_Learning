@@ -338,13 +338,15 @@ class DeterministicReversalLearningSession(
         # defaults, assume no previous session
         prev_session_exists = False
         prev_block_side = None
+        # initialise container for previous correct days
+        self.prev_trial_correct = []
         # get subject name from kwargs
         subject_name = kwargs.get("subject")
         if subject_name:
             sessions = iterate_previous_sessions(
                 subject_name=subject_name,
                 task_name=self.protocol_name,
-                n=1,
+                n=4, # load up to 4 previous sessions (to cover 5 days total)
             )
             log.warning(f"Using Subject: {subject_name}")
 
@@ -358,6 +360,15 @@ class DeterministicReversalLearningSession(
                 prev_block_side = prev_trials_table["block_side"].iloc[-1]
                 log.warning(
                     f"Subject {subject_name} ended previous session with block side: {prev_block_side}"
+                )
+                # load previous trial_correct history
+                for session in reversed(sessions): # oldest to newest session
+                    history_trials_table, _ = load_task_jsonable(session["file_task_data"])
+                    if "trial_correct" in history_trials_table.columns:
+                        valid_trial_correct = history_trials_table["trial_correct"].dropna().tolist()
+                        self.prev_trial_correct.extend(valid_trial_correct)
+                log.warning(
+                    f"Loaded {len(self.prev_trial_correct)} historical trials from {len(sessions)} previous sessions."
                 )
             else:
                 log.warning("No previous sessions found")
@@ -876,6 +887,24 @@ class DeterministicReversalLearningSession(
             self.failure_total = 0
             # initialise list to store MAP probabilities
             self.map_data = []
+
+            if self.prev_trial_correct:
+                # use historical trials to determine total success and failure values
+                for is_correct in self.prev_trial_correct:
+                    trial_type = "success" if is_correct else "failure"
+                    self.success_total, self.failure_total, _, _ = (
+                        self.update_strategy_posterior_probability(
+                            trial_type,
+                            self.decay_rate,
+                            self.success_total,
+                            self.failure_total,
+                            self.alpha0,
+                            self.beta0,
+                        )
+                    )
+                log.warning(
+                    f"Start posterior totals: Successes={self.success_total:.3f}, Failures={self.failure_total:.3f}"
+                )
 
         # get current trial only
         row = self.trials_table.iloc[self.trial_num]
