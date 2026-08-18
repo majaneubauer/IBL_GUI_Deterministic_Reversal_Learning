@@ -256,8 +256,14 @@ class TrialsTableModel(DataFrameTableModel):
             debias = index.siblingAtColumn(3).data()
             outcome = index.siblingAtColumn(4).data()
             timing = index.siblingAtColumn(5).data()
+            if response_side < 0:
+                side_str = "35° left"
+            elif response_side > 0:
+                side_str = "35° right"
+            else:
+                side_str = ""
             tip = (
-                f'Trial {trial}: {contrast:g}% contrast / 35° {"right" if response_side > 0 else "left"} '
+                f"Trial {trial}: {contrast:g}% contrast / {side_str} "
                 f'{"/ debiasing " if debias else ""}/ {outcome}'
             )
             return tip + ("." if outcome == "no-go" else f" after {timing:0.2f} s.")
@@ -1105,7 +1111,9 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidgetcont.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidgetcont.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
-        self.bsaWidgetcont.plotItem.addItem(pg.InfiniteLine(self.reversal_criterion, 0, "blue"))
+        self.bsaWidgetcont.plotItem.addItem(
+            pg.InfiniteLine(self.reversal_criterion, 0, "blue")
+        )
         self.bsaWidgetcont.plotItem.setYRange(0, 1, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurvecont = self.bsaWidgetcont.plot(
@@ -1130,11 +1138,11 @@ class OnlinePlotsView(QMainWindow):
         self.bsaWidget.plotItem.getAxis("left").setLabel("P(Strategy)")
         self.bsaWidget.plotItem.getAxis("bottom").setLabel("Trial")
         self.bsaWidget.plotItem.addItem(pg.InfiniteLine(0.5, 0, "black"))
-        self.bsaWidget.plotItem.addItem(pg.InfiniteLine(self.reversal_criterion, 0, "blue"))
-        self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
-        self.bsaWidget.plotItem.setXRange(
-            0, NTRIALS_INIT, padding=0.025
+        self.bsaWidget.plotItem.addItem(
+            pg.InfiniteLine(self.reversal_criterion, 0, "blue")
         )
+        self.bsaWidget.plotItem.setYRange(0, 1, padding=0.025)
+        self.bsaWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
         # create curve --> dots ensure we see something at trial 0
         self.bsaCurve = self.bsaWidget.plot(
             [],
@@ -1145,9 +1153,7 @@ class OnlinePlotsView(QMainWindow):
             symbolBrush="k",
         )
         # plot block lines
-        block_lines = np.arange(
-            self.block_length - 1, NTRIALS_INIT, self.block_length
-        )
+        block_lines = np.arange(self.block_length - 1, NTRIALS_INIT, self.block_length)
         for line in block_lines[
             0:-1
         ]:  # do not plot the last line cause there is no reversal check
