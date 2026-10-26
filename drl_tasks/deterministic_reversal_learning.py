@@ -1378,10 +1378,10 @@ class HabituationDeterministicReversalLearningSession(
         # During this period the Bpod TTL is HIGH and there are no stimuli. The onset of this state is trial end;
         # the offset of this state is trial start!
         sma.add_state(
-            state_name="iti",
-            state_timer=1,  # Stim off for 1 sec
+            state_name="trial_start",
+            state_timer=0, # 1,  # Stim off for 1 sec
             state_change_conditions={"Tup": "stim_on"},
-            output_actions=[self.bpod.actions.bonsai_hide_stim, ("BNC1", 255)],
+            output_actions=[],
         )
 
         # This stim_on state is considered the actual trial start
@@ -1450,8 +1450,27 @@ class HabituationDeterministicReversalLearningSession(
         # The stimulus thus remains in the screen centre for 0.5 + ITI_DELAY_SECS seconds.
         sma.add_state(
             state_name="post_reward",
-            state_timer=self.task_params.ITI_DELAY_SECS - self.reward_time,
-            state_change_conditions={"Tup": "exit"},
+            state_timer=self.task_params.FEEDBACK_CORRECT_DELAY_SECS - self.reward_time,
+            state_change_conditions={"Tup": "hide_stim"},
             output_actions=[],
+        )
+
+        sma.add_state(
+            state_name="hide_stim",
+            state_timer=0.1,
+            output_actions=[self.bpod.actions.bonsai_hide_stim],
+            state_change_conditions={
+                "Tup": "exit_state",
+                "BNC1High": "exit_state",
+                "BNC1Low": "exit_state",
+            },
+        )
+
+        # Wait for ITI_DELAY_SECS before ending the trial. Raise BNC1 to mark this event.
+        sma.add_state(
+            state_name="exit_state",
+            state_timer=self.task_params.ITI_DELAY_SECS,
+            output_actions=[("BNC1", 255)],
+            state_change_conditions={"Tup": "exit"},
         )
         return sma
