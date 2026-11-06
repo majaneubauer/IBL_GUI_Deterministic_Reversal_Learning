@@ -358,10 +358,12 @@ class DeterministicReversalLearningSession(
                 prev_trials_table, prev_bpod_data = load_task_jsonable(
                     path_file_task_data
                 )
-                prev_block_side = prev_trials_table["block_side"].iloc[-1]
-                log.warning(
-                    f"Subject {subject_name} ended previous session with block side: {prev_block_side}"
-                )
+                # load block side from last trial of previous day
+                if "block_side" in prev_trials_table.columns:
+                    prev_block_side = prev_trials_table["block_side"].iloc[-1]
+                    log.warning(
+                        f"Subject {subject_name} ended previous session with block side: {prev_block_side}"
+                    )
                 # Load final success and failure total from the last trial of the previous day
                 if "success_total" in prev_trials_table.columns and "failure_total" in prev_trials_table.columns:
                     self.prev_success_total = float(prev_trials_table["success_total"].iloc[-1])
@@ -517,19 +519,19 @@ class DeterministicReversalLearningSession(
             state_name="interactive_delay",
             state_timer=self.task_params.INTERACTIVE_DELAY,
             output_actions=[],
-            state_change_conditions={"Tup": "play_instructive_tone"},
+            state_change_conditions={"Tup": "open_loop"}, # play_instructive_tone
         )
 
-        # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
-        sma.add_state(
-            state_name="play_instructive_tone",
-            state_timer=0.1,
-            output_actions=[self.bpod.actions.play_instructive_tone],
-            state_change_conditions={
-                "Tup": "open_loop",
-                "BNC2High": "open_loop",
-            },
-        )
+        # # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
+        # sma.add_state(
+        #     state_name="play_instructive_tone",
+        #     state_timer=0.1,
+        #     output_actions=[self.bpod.actions.play_instructive_tone],
+        #     state_change_conditions={
+        #         "Tup": "open_loop",
+        #         "BNC2High": "open_loop",
+        #     },
+        # )
 
         # Start the open loop state in which the animal can move the wheel but wheel movement is not coupled to the stimulus position.
         sma.add_state(
