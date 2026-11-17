@@ -1021,19 +1021,19 @@ class TrainingDeterministicReversalLearningSession(
             state_name="interactive_delay",
             state_timer=self.task_params.INTERACTIVE_DELAY,
             output_actions=[],
-            state_change_conditions={"Tup": "play_instructive_tone"},
+            state_change_conditions={"Tup": "open_loop"},
         )
 
-        # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
-        sma.add_state(
-            state_name="play_instructive_tone",
-            state_timer=0.1,
-            output_actions=[self.bpod.actions.play_instructive_tone],
-            state_change_conditions={
-                "Tup": "open_loop",
-                "BNC2High": "open_loop",
-            },
-        )
+        # # Play instrucive tone. Move to next state if sound is detected. Use the state-timer as a backup to prevent a stall.
+        # sma.add_state(
+        #     state_name="play_instructive_tone",
+        #     state_timer=0.1,
+        #     output_actions=[self.bpod.actions.play_instructive_tone],
+        #     state_change_conditions={
+        #         "Tup": "open_loop",
+        #         "BNC2High": "open_loop",
+        #     },
+        # )
 
         # Start the open loop state in which the animal can move the wheel but wheel movement is not coupled to the stimulus position.
         sma.add_state(
@@ -1392,21 +1392,21 @@ class HabituationDeterministicReversalLearningSession(
             state_timer=0.1,
             output_actions=[self.bpod.actions.bonsai_show_stim],
             state_change_conditions={
-                "BNC1High": "play_instructive_tone",
-                "BNC1Low": "play_instructive_tone",
-                "Tup": "play_instructive_tone",
+                "BNC1High": "open_loop",
+                "BNC1Low": "open_loop",
+                "Tup": "open_loop",
             },
         )
 
-        sma.add_state(
-            state_name="play_instructive_tone",
-            state_timer=0.1,
-            output_actions=[self.bpod.actions.play_instructive_tone],
-            state_change_conditions={
-                "Tup": "open_loop",
-                "BNC2High": "open_loop",
-            },
-        )
+        # sma.add_state(
+        #     state_name="play_instructive_tone",
+        #     state_timer=0.1,
+        #     output_actions=[self.bpod.actions.play_instructive_tone],
+        #     state_change_conditions={
+        #         "Tup": "open_loop",
+        #         "BNC2High": "open_loop",
+        #     },
+        # )
 
         sma.add_state(
             state_name="open_loop",
