@@ -982,6 +982,9 @@ class OnlinePlotsModel(QObject):
     def mapProbabilityUpToTrial(self, trial: int):
         return self._trial_data["map_probability"][: self._nTrialsUpTo(trial)]
 
+    def CumSumUpToTrial(self, trial: int):
+        return self._trial_data["trial_correct"].iloc[:self._nTrialsUpTo(trial)].cumsum().values
+
     def blockBoundariesUpToTrial(self, trial: int, block_length: int):
         max_block = self._nTrialsUpTo(trial) // block_length
         return [
@@ -1003,10 +1006,14 @@ class OnlinePlotsModel(QObject):
     def bpod_data(self, trial: int) -> pd.DataFrame:
         return bpod_trial_data_to_dataframe(self._bpod_data[trial], trial)
 
-    def getTitle(self) -> str:
-        protocol = getattr(self, "task_settings", dict()).get(
+    @property
+    def protocol_name(self) -> str:
+        return getattr(self, "task_settings", dict()).get(
             "PYBPOD_PROTOCOL", "unknown task protocol"
         )
+
+    def getTitle(self) -> str:
+        protocol = self.protocol_name
         spacer = "  ·  "
         t_elapsed = str(self.timeElapsed()).split(".")[0]
         block_side = self._trial_data.iloc[self._current_trial]["block_side"]
@@ -1037,14 +1044,16 @@ class OnlinePlotsView(QMainWindow):
         # use a grid layout to organize the different widgets
         layout = QGridLayout(frame)
         frame.setLayout(layout)
-        layout.setColumnStretch(0, 1)
+        layout.setColumnStretch(0, 2)
         layout.setColumnStretch(1, 2)
+        layout.setColumnStretch(2, 2)
+        layout.setColumnStretch(3, 1)
 
         # titles are arranged in a sub-layout to allow changing the background color in unison
         self.titleFrame = QFrame(self)
         title_layout = QVBoxLayout(self.titleFrame)
         self.titleFrame.setLayout(title_layout)
-        layout.addWidget(self.titleFrame, 0, 0, 1, 3)
+        layout.addWidget(self.titleFrame, 0, 0, 1, 4)
 
         # main title
         self.title = QLabel(self.model.getTitle(), self)
@@ -1126,7 +1135,7 @@ class OnlinePlotsView(QMainWindow):
         )
         self.bsaWidgetcont.plotItem.hoverEvent = self.mouseOverFunction
         layout.addWidget(
-            self.bsaWidgetcont, 1, 1, 1, 1
+            self.bsaWidgetcont, 1, 1, 1, 2
         )  # same place as psychometric function
         self.bsaWidgetcont.setDefaultPadding(0.01)
 
@@ -1164,8 +1173,64 @@ class OnlinePlotsView(QMainWindow):
             self.bsaWidget.addItem(vline)
         self.bsaWidget.plotItem.hoverEvent = self.mouseOverFunction
         layout.addWidget(
-            self.bsaWidget, 2, 1, 1, 1
+            self.bsaWidget, 2, 1, 1, 2
         )  # same place as chronometric function
+
+        # cumulative learning curve for training data continuous
+        self.cumsumWidgetcont = PlotWidget(parent=self)
+        self.cumsumWidgetcont.plotItem.setTitle(
+            "Cumulative Learning Curve (Continuous)", color="k"
+        )
+        self.cumsumWidgetcont.plotItem.getAxis("left").setLabel("Cumulative Performance")
+        self.cumsumWidgetcont.plotItem.getAxis("bottom").setLabel("Trial")
+        self.cumsumWidgetcont.plotItem.addItem(pg.InfiniteLine(160, 0, "black")) # chance 2/3 because 2 out of 3 responses are correct
+        self.cumsumWidgetcont.plotItem.addItem(
+            pg.InfiniteLine(192, 0, "blue")
+        ) # 80%
+        # create curve --> dots ensure we see something at trial 0
+        self.cumsumCurvecont = self.cumsumWidgetcont.plot(
+            [],
+            [],
+            pen=pg.mkPen("k", width=2),
+            symbol="o",
+            symbolSize=3,
+            symbolBrush="k",
+        )
+        self.cumsumWidgetcont.plotItem.hoverEvent = self.mouseOverFunction
+        layout.addWidget(self.cumsumWidgetcont, 1, 1, 2, 1)
+
+        # cumulative learning curve for training data ful yrange
+        self.cumsumWidget = PlotWidget(parent=self)
+        self.cumsumWidget.plotItem.setTitle(
+            "Cumulative Learning Curve", color="k"
+        )
+        self.cumsumWidget.plotItem.getAxis("left").setLabel("Cumulative Performance")
+        self.cumsumWidget.plotItem.getAxis("bottom").setLabel("Trial")
+        self.cumsumWidget.plotItem.addItem(pg.InfiniteLine(160, 0, "black")) # chance 2/3 because 2 out of 3 responses are correct
+        self.cumsumWidget.plotItem.addItem(
+            pg.InfiniteLine(192, 0, "blue")
+        ) # 80%
+        self.cumsumWidget.plotItem.setXRange(0, NTRIALS_INIT, padding=0.025)
+        self.cumsumWidget.plotItem.setYRange(0, NTRIALS_INIT, padding=0.025)
+        # create curve --> dots ensure we see something at trial 0
+        self.cumsumCurve = self.cumsumWidget.plot(
+            [],
+            [],
+            pen=pg.mkPen("k", width=2),
+            symbol="o",
+            symbolSize=3,
+            symbolBrush="k",
+        )
+        self.cumsumWidget.plotItem.hoverEvent = self.mouseOverFunction
+        layout.addWidget(self.cumsumWidget, 1, 2, 2, 1)
+
+        # show BSA plots when DRL task and CumSum Plots when Training
+        if self.model.protocol_name == "TrainingDeterministicReversalLearning":
+            self.bsaWidgetcont.setVisible(False)
+            self.bsaWidget.setVisible(False)
+        else:
+            self.cumsumWidgetcont.setVisible(False)
+            self.cumsumWidget.setVisible(False)
 
         # performance chart
         self.performanceWidget = SingleBarChartWidget(
@@ -1176,7 +1241,7 @@ class OnlinePlotsView(QMainWindow):
         self.performanceWidget.plotItem.getAxis("left").setLabel("Correct Choices (%)")
         self.performanceWidget.plotItem.setYRange(0, 105, padding=0)
         self.performanceWidget.plotItem.hoverEvent = self.mouseOverBarChart
-        layout.addWidget(self.performanceWidget, 1, 2, 1, 1)
+        layout.addWidget(self.performanceWidget, 1, 3, 1, 1)
 
         # reward chart
         self.rewardWidget = SingleBarChartWidget(
@@ -1186,7 +1251,7 @@ class OnlinePlotsView(QMainWindow):
         self.rewardWidget.plotItem.getAxis("left").setLabel("Total Reward Volume (μl)")
         self.rewardWidget.plotItem.setYRange(0, 2300, padding=0)
         self.rewardWidget.plotItem.hoverEvent = self.mouseOverBarChart
-        layout.addWidget(self.rewardWidget, 2, 2, 1, 1)
+        layout.addWidget(self.rewardWidget, 2, 3, 1, 1)
 
         # bpod data
         self.bpodWidget = BpodWidget(self, title="Bpod States and Input Channels")
@@ -1194,7 +1259,7 @@ class OnlinePlotsView(QMainWindow):
             170
         )  # used to be 130, but with added Port2 and Port3 that is too small to see x-axis labels
         self.bpodWidget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        layout.addWidget(self.bpodWidget, 3, 0, 1, 3)
+        layout.addWidget(self.bpodWidget, 3, 0, 1, 4)
 
         # connect signals / slots
         self.model.titleChanged.connect(self.setTitle)
@@ -1250,6 +1315,7 @@ class OnlinePlotsView(QMainWindow):
         self._updatePerformance(trial)
         self._updateReward(trial)
         self._updateBSA(trial)
+        self._updateCumSum(trial)
         self.update()
 
     def _updateBpod(self, trial: int):
@@ -1310,6 +1376,16 @@ class OnlinePlotsView(QMainWindow):
             vline.setZValue(-10)
             self.bsaWidgetcont.addItem(vline)
             self.bsa_block_lines.append(vline)
+
+    def _updateCumSum(self, trial: int):
+        if not hasattr(self.model._trial_data, "trial_correct"):
+            return
+
+        x = np.arange(self.model._nTrialsUpTo(trial))
+        y = self.model.CumSumUpToTrial(trial)
+
+        self.cumsumCurvecont.setData(x, y)
+        self.cumsumCurve.setData(x, y)
 
     def keyPressEvent(self, event) -> None:
         """Navigate trials using directional keys."""
